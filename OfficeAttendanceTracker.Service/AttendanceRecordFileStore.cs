@@ -23,7 +23,7 @@ namespace OfficeAttendanceTracker.Service
         public AttendanceRecordFileStore(IConfiguration config)
         {
             var filename = config["DataFileName"] ?? "attendance.json";
-            var filepath = config["DataFilePath"] ?? AppDomain.CurrentDomain.BaseDirectory;
+            var filepath = string.IsNullOrEmpty(config["DataFilePath"]) ? AppDomain.CurrentDomain.BaseDirectory : config["DataFilePath"];
             _dataFilePath = Path.Combine(filepath, filename);
             _attendanceRecords = [];
 
@@ -31,23 +31,22 @@ namespace OfficeAttendanceTracker.Service
         }
 
 
-        public void Add(string employeeId, bool isPresent, DateTime? date = null)
+        public void Add(bool isPresent, DateTime? date = null)
         {
             _attendanceRecords.Add(new AttendanceRecord
             {
-                EmployeeId = employeeId,
                 Date = date == null? DateTime.Today : date.Value.Date, // Use provided date or default to today's date (time part is truncated)
-                IsPresent = isPresent
+                IsOffice = isPresent
             });
 
             Save();
         }
 
 
-        public List<AttendanceRecord> GetAll(string employeeId, DateTime startDate, DateTime endDate)
+        public List<AttendanceRecord> GetAll(DateTime startDate, DateTime endDate)
         {
             return _attendanceRecords
-                .FindAll(record => record.EmployeeId == employeeId && record.Date >= startDate.Date && record.Date <= endDate.Date);
+                .FindAll(record => record.Date >= startDate.Date && record.Date <= endDate.Date);
         }
 
         public List<AttendanceRecord> GetAll()
@@ -59,23 +58,16 @@ namespace OfficeAttendanceTracker.Service
         {
             if (month == null) month = DateTime.Today;
 
-            return _attendanceRecords.FindAll(x => x.Date.Year == month.Value.Year && x.Date.Month == month.Value.Month);
-        }
-
-        public List<AttendanceRecord> GetMonth(string employeeId, DateTime? month = null)
-        {
-            if (month == null) month = DateTime.Today;
-
-            return _attendanceRecords.FindAll(x => x.EmployeeId == employeeId && x.Date.Year == month.Value.Year && x.Date.Month == month.Value.Month);
+            return _attendanceRecords.FindAll(record => record.Date.Year == month.Value.Year && record.Date.Month == month.Value.Month);
         }
 
 
-        public List<AttendanceRecord> GetToday(string employeeId)
+        public AttendanceRecord GetToday()
         {
-            return _attendanceRecords.FindAll(x => x.EmployeeId == employeeId &&
-                x.Date.Year == DateTime.Today.Year &&
-                x.Date.Month == DateTime.Today.Month &&
-                x.Date.Day == DateTime.Today.Day);
+            return _attendanceRecords.Find(record =>
+                record.Date.Year == DateTime.Today.Year &&
+                record.Date.Month == DateTime.Today.Month &&
+                record.Date.Day == DateTime.Today.Day);
         }
 
 
@@ -96,7 +88,7 @@ namespace OfficeAttendanceTracker.Service
             else
             {
                 Save();
-            } 
+            }
         }
 
 

@@ -4,45 +4,57 @@ namespace OfficeAttendanceTracker.Service
     {
         private readonly ILogger<Worker> _logger;
         private readonly IAttendanceService _attendanceService;
+        private readonly IAttendanceRecordStore _attendanceRecordStore;
         private readonly int _pollIntervalMs;
 
-        public Worker(ILogger<Worker> logger, IConfiguration config, IAttendanceService attendanceService)
+        public Worker(ILogger<Worker> logger, IConfiguration config, IAttendanceService attendanceService, IAttendanceRecordStore attendanceRecordStore)
         {
             _logger = logger;
             _pollIntervalMs = config.GetValue("PollIntervalMs", 10000);
             _attendanceService = attendanceService;
+            _attendanceRecordStore = attendanceRecordStore;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            if (_logger.IsEnabled(LogLevel.Information)) _logger.LogInformation("Polling interval is: {Interval}ms", _pollIntervalMs);
+
             while (!stoppingToken.IsCancellationRequested)
             {
-                if (_logger.IsEnabled(LogLevel.Information))
-                {
-                    _logger.LogInformation("Worker running at: {Time}", DateTimeOffset.Now);
-                    CheckAttendance();
-                }
+
+                _logger.LogInformation("Worker running at: {Time}", DateTimeOffset.Now);
+
+                TakeAttendance();
+
                 await Task.Delay(_pollIntervalMs, stoppingToken);
             }
         }
 
-        private void CheckAttendance()
+        private void TakeAttendance()
         {
-            // if new day, set as not office to begin
+            var attendance = _attendanceRecordStore.GetToday();
+            if (attendance == null)
+            {
+                _logger.LogInformation("saving first record for the day");
+                _attendanceRecordStore.Add(false);
+                attendance = _attendanceRecordStore.GetToday();
+            }
 
-
-
-            // check if currently in office
-            // if we are, then set the day as office day
-            // dont need to set non-office day since we assume everyday start as wfh
             var isAtOfficeNow = _attendanceService.CheckAttendance();
             if (isAtOfficeNow)
             {
-                // set today as in office
-                _logger.LogInformation("Today is office day!");
-
-                // if data store not already updated
-
+                _logger.LogInformation("Detected in office");
+                _logger.LogInformation("Taking attendance for today");
+                
+                if (!attendance.IsOffice)
+                {
+                    _logger.LogInformation("updating office attendance for today");
+                    _attendanceRecordStore.Add(true);
+                }
+                else
+                {
+                    _logger.LogInformation("attendance already taken previously. doing nothing");
+                }
             }
             else
             {

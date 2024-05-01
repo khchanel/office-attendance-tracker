@@ -3,15 +3,16 @@ using System.Net.NetworkInformation;
 
 namespace OfficeAttendanceTracker.Service
 {
-    public class IPAddressBasedAttendanceService : IAttendanceService
+    public class AttendanceService : IAttendanceService
     {
-        private readonly ILogger<IPAddressBasedAttendanceService> _logger;
+        private readonly ILogger<AttendanceService> _logger;
         private readonly IPAddress _officeSubnetMask;
         private readonly IPAddress _officeAddress;
         private readonly Guid _instanceId;
 
 
-        public IPAddressBasedAttendanceService(ILogger<IPAddressBasedAttendanceService> logger, IConfiguration config)
+        public AttendanceService(ILogger<AttendanceService> logger,
+            IConfiguration config)
         {
             _logger = logger;
             _instanceId = Guid.NewGuid();
@@ -21,14 +22,15 @@ namespace OfficeAttendanceTracker.Service
 
             _officeSubnetMask = IPAddress.Parse(mask!);
             _officeAddress = IPAddress.Parse(addr!);
+
         }
 
         public bool CheckAttendance()
         {
+            _logger.LogInformation("instance id: {Instance}", _instanceId);
+
             bool isHostResolveToOffice = CheckUsingHostName();
             bool isNicAddressInOffice = CheckUsingNicIP();
-
-            _logger.LogInformation("instance id: {Instance}", _instanceId);
 
             return isHostResolveToOffice && isNicAddressInOffice;
 
