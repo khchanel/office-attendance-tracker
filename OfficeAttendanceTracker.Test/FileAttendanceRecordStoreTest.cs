@@ -6,13 +6,13 @@ namespace OfficeAttendanceTracker.Test
     [TestClass]
     public class FileAttendanceRecordStoreTest
     {
-        private FileAttendanceRecordStore _attendanceService;
+        private AttendanceRecordFileStore _attendanceService;
 
 
         [TestInitialize]
         public void Setup()
         {
-            _attendanceService = new FileAttendanceRecordStore();
+            _attendanceService = new AttendanceRecordFileStore();
             _attendanceService.Clear();
         }
 

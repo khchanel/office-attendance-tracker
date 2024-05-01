@@ -3,14 +3,14 @@ using System.Text.Json;
 
 namespace OfficeAttendanceTracker.Service
 {
-    public class FileAttendanceRecordStore : IAttedanceRecordStore
+    public class AttendanceRecordFileStore : IAttendanceRecordStore
     {
 
         private readonly string _dataFilePath;
         private List<AttendanceRecord> _attendanceRecords;
 
 
-        public FileAttendanceRecordStore()
+        public AttendanceRecordFileStore()
         {
             var filename = "attendance.json";
             var filepath = AppDomain.CurrentDomain.BaseDirectory;
@@ -20,7 +20,7 @@ namespace OfficeAttendanceTracker.Service
             Load();
         }
 
-        public FileAttendanceRecordStore(IConfiguration config)
+        public AttendanceRecordFileStore(IConfiguration config)
         {
             var filename = config["DataFileName"] ?? "attendance.json";
             var filepath = config["DataFilePath"] ?? AppDomain.CurrentDomain.BaseDirectory;

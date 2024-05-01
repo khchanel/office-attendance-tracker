@@ -2,7 +2,7 @@
 
 namespace OfficeAttendanceTracker.Service
 {
-    public interface IAttedanceRecordStore
+    public interface IAttendanceRecordStore
     {
         void Add(string employeeId, bool isPresent, DateTime? date = null);
         void Clear();
