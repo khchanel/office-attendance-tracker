@@ -46,7 +46,7 @@ namespace OfficeAttendanceTracker.Service
             }
             else
             {
-                _logger.LogInformation("Not deteced at office now");
+                _logger.LogInformation("Not detected at office now");
             }
 
         }
