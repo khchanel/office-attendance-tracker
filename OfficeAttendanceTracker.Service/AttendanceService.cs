@@ -8,11 +8,13 @@ namespace OfficeAttendanceTracker.Service
         private readonly ILogger<IPAddressBasedAttendanceService> _logger;
         private readonly IPAddress _officeSubnetMask;
         private readonly IPAddress _officeAddress;
+        private readonly Guid _instanceId;
 
 
         public IPAddressBasedAttendanceService(ILogger<IPAddressBasedAttendanceService> logger, IConfiguration config)
         {
             _logger = logger;
+            _instanceId = Guid.NewGuid();
 
             var mask = config["OfficeNetwork:SubnetMask"];
             var addr = config["OfficeNetwork:Address"];
@@ -25,6 +27,8 @@ namespace OfficeAttendanceTracker.Service
         {
             bool isHostResolveToOffice = CheckUsingHostName();
             bool isNicAddressInOffice = CheckUsingNicIP();
+
+            _logger.LogInformation("instance id: {Instance}", _instanceId);
 
             return isHostResolveToOffice && isNicAddressInOffice;
 
@@ -65,12 +69,10 @@ namespace OfficeAttendanceTracker.Service
                 if (networkInterface.OperationalStatus == OperationalStatus.Up &&
                     networkInterface.NetworkInterfaceType != NetworkInterfaceType.Loopback)
                 {
-                    // Get IP properties for the interface
                     var ipProperties = networkInterface.GetIPProperties();
                     _logger.LogDebug("Interface: {Name}", networkInterface.Name);
 
 
-                    // Get all unicast IP addresses assigned to the interface
                     foreach (var ipAddress in ipProperties.UnicastAddresses)
                     {
                         _logger.LogDebug("Interface: {Name} IP Address: {Address}", networkInterface.Name, ipAddress.Address);
