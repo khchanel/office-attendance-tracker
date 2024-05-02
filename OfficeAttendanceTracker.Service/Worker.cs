@@ -44,8 +44,7 @@ namespace OfficeAttendanceTracker.Service
             if (isAtOfficeNow)
             {
                 _logger.LogInformation("Detected in office");
-                _logger.LogInformation("Taking attendance for today");
-                
+
                 if (!attendance.IsOffice)
                 {
                     _logger.LogInformation("updating office attendance for today");
@@ -53,12 +52,12 @@ namespace OfficeAttendanceTracker.Service
                 }
                 else
                 {
-                    _logger.LogInformation("attendance already taken previously. doing nothing");
+                    _logger.LogInformation("attendance already taken previously.");
                 }
             }
             else
             {
-                _logger.LogInformation("Not detected at office now");
+                _logger.LogInformation("Not detected in office now");
             }
 
         }
