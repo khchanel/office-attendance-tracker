@@ -1,9 +1,9 @@
 ﻿
 namespace OfficeAttendanceTracker.Service
 {
-    public class AttendanceRecord
+    public record AttendanceRecord
     {
-        public DateTime Date { get; set; }
-        public bool IsOffice { get; set; }
+        public required DateTime Date { get; set; }
+        public required bool IsOffice { get; set; }
     }
 }
