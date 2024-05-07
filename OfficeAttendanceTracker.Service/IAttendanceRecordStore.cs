@@ -5,12 +5,19 @@ namespace OfficeAttendanceTracker.Service
     public interface IAttendanceRecordStore
     {
         /// <summary>
-        /// Take attendance for date.
-        /// if <paramref name="date"/> is not defined then default to Today
+        /// Take attendance for <paramref name="date"/>
         /// </summary>
-        /// <param name="isPresent"></param>
+        /// <param name="isOffice"></param>
         /// <param name="date"></param>
-        void Add(bool isPresent, DateTime? date = null);
+        /// <returns>reference to the record stored</returns>
+        AttendanceRecord Add(bool isOffice, DateTime date);
+
+        /// <summary>
+        /// Update <paramref name="isOffice"/> for <paramref name="date"/>
+        /// </summary>
+        /// <param name="isOffice"></param>
+        /// <param name="date"></param>
+        void Update(bool isOffice, DateTime date);
 
         /// <summary>
         /// Clear storage and reset
@@ -20,6 +27,7 @@ namespace OfficeAttendanceTracker.Service
         List<AttendanceRecord> GetAll();
         List<AttendanceRecord> GetAll(DateTime startDate, DateTime endDate);
         List<AttendanceRecord> GetMonth(DateTime? month = null);
-        AttendanceRecord GetToday();
+        AttendanceRecord? GetToday();
+        AttendanceRecord? GetDate(DateTime date);
     }
 }

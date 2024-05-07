@@ -20,8 +20,19 @@ namespace OfficeAttendanceTracker.Service
             var mask = config["OfficeNetwork:SubnetMask"];
             var addr = config["OfficeNetwork:Address"];
 
-            _officeSubnetMask = IPAddress.Parse(mask!);
-            _officeAddress = IPAddress.Parse(addr!);
+            if (mask == null)
+            {
+                throw new ArgumentNullException("mask", "Config missing OfficeNetwork:SubnetMask");
+            }
+
+            if (addr == null)
+            {
+                throw new ArgumentNullException("addr", "config missing OfficeNetwork:Address");
+            }
+
+
+            _officeSubnetMask = IPAddress.Parse(mask);
+            _officeAddress = IPAddress.Parse(addr);
 
         }
 
@@ -62,7 +73,6 @@ namespace OfficeAttendanceTracker.Service
         private bool CheckUsingNicIP()
         {
 
-            // Get all network interfaces
             var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
 
             foreach (var networkInterface in networkInterfaces)

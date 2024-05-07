@@ -31,15 +31,30 @@ namespace OfficeAttendanceTracker.Service
         }
 
 
-        public void Add(bool isPresent, DateTime? date = null)
+        public AttendanceRecord Add(bool isOffice, DateTime date)
         {
-            _attendanceRecords.Add(new AttendanceRecord
+            var record = new AttendanceRecord
             {
-                Date = date == null? DateTime.Today : date.Value.Date, // Use provided date or default to today's date (time part is truncated)
-                IsOffice = isPresent
-            });
+                Date = date.Date, // time part is truncated
+                IsOffice = isOffice
+            };
+
+            _attendanceRecords.Add(record);
 
             Save();
+
+            return record;
+        }
+
+        public void Update(bool isOffice, DateTime date)
+        {
+            var record = GetDate(date);
+
+            if (record != null && record.IsOffice != isOffice)
+            {
+                record.IsOffice = isOffice;
+                Save();
+            }
         }
 
 
@@ -56,18 +71,22 @@ namespace OfficeAttendanceTracker.Service
 
         public List<AttendanceRecord> GetMonth(DateTime? month = null)
         {
-            if (month == null) month = DateTime.Today;
+            if (month == null) month = DateTime.Today.Date;
 
             return _attendanceRecords.FindAll(record => record.Date.Year == month.Value.Year && record.Date.Month == month.Value.Month);
         }
 
-
-        public AttendanceRecord GetToday()
+        public AttendanceRecord? GetDate(DateTime date)
         {
-            return _attendanceRecords.Find(record =>
-                record.Date.Year == DateTime.Today.Year &&
-                record.Date.Month == DateTime.Today.Month &&
-                record.Date.Day == DateTime.Today.Day);
+            var record = _attendanceRecords.Find(r => r.Date == date.Date);
+
+            return record;
+        }
+
+
+        public AttendanceRecord? GetToday()
+        {
+            return GetDate(DateTime.Today);
         }
 
 

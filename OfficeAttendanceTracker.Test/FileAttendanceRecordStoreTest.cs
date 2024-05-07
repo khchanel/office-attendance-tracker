@@ -42,11 +42,30 @@ namespace OfficeAttendanceTracker.Test
             int initialCount = _attendanceService.GetMonth(today).Count;
 
             // Act
-            _attendanceService.Add(true);
+            _attendanceService.Add(true, DateTime.Today);
 
             // Assert
             Assert.AreEqual(initialCount + 1, _attendanceService.GetMonth(today).Count);
         }
+
+        [TestMethod]
+        public void AddAttendanceRecord_AddsRecordReturnReferenceCopy()
+        {
+            // Arrange
+            DateTime today = DateTime.Today;
+            int initialCount = _attendanceService.GetMonth(today).Count;
+
+            // Act
+            var record = _attendanceService.Add(true, DateTime.Today);
+
+
+            // Assert
+            Assert.AreSame<AttendanceRecord>(record, _attendanceService.GetToday());
+            Assert.IsTrue(_attendanceService.GetToday().IsOffice);
+            record.IsOffice = false;
+            Assert.IsFalse(_attendanceService.GetToday().IsOffice);
+        }
+
 
 
         [TestMethod]
@@ -60,6 +79,50 @@ namespace OfficeAttendanceTracker.Test
             Assert.AreEqual(true, record.IsOffice);
             Assert.AreEqual(DateTime.Today, record.Date);
 
+        }
+
+        [TestMethod]
+        public void GetToday_Null()
+        {
+            var record = _attendanceService.GetToday();
+
+            Assert.IsNull(record);
+
+        }
+
+        [TestMethod]
+        public void GetMonth()
+        {
+            _attendanceService.Add(true, new DateTime(2024, 5, 1));
+            _attendanceService.Add(false, new DateTime(2024, 5, 2));
+            _attendanceService.Add(true, new DateTime(2024, 4, 1));
+
+
+
+            var records = _attendanceService.GetMonth(new DateTime(2024,5,1));
+            Assert.IsNotNull(records);
+            Assert.AreEqual(2, records.Count);
+            foreach (var r in records)
+            {
+                Assert.AreEqual(5, r.Date.Month);
+            }
+
+        }
+
+
+        [TestMethod]
+        public void Update_Existing()
+        {
+            _attendanceService.Add(false, DateTime.Today.AddDays(-2));
+            _attendanceService.Add(false, DateTime.Today);
+            Assert.AreEqual(2, _attendanceService.GetAll().Count);
+
+            _attendanceService.Update(true, DateTime.Today);
+
+            var x = _attendanceService.GetAll();
+            Assert.AreEqual(2, x.Count);
+            Assert.IsFalse(x[0].IsOffice);
+            Assert.IsTrue(x[1].IsOffice);
         }
     }
 }

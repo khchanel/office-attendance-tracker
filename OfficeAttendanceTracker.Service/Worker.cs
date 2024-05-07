@@ -36,8 +36,7 @@ namespace OfficeAttendanceTracker.Service
             if (attendance == null)
             {
                 _logger.LogInformation("saving first record for the day");
-                _attendanceRecordStore.Add(false);
-                attendance = _attendanceRecordStore.GetToday();
+                attendance = _attendanceRecordStore.Add(false, DateTime.Today);
             }
 
             var isAtOfficeNow = _attendanceService.CheckAttendance();
@@ -48,11 +47,7 @@ namespace OfficeAttendanceTracker.Service
                 if (!attendance.IsOffice)
                 {
                     _logger.LogInformation("updating office attendance for today");
-                    _attendanceRecordStore.Add(true);
-                }
-                else
-                {
-                    _logger.LogInformation("attendance already taken previously.");
+                    _attendanceRecordStore.Update(true, DateTime.Today);
                 }
             }
             else
