@@ -102,7 +102,7 @@ namespace OfficeAttendanceTracker.Service
             if (File.Exists(_dataFilePath))
             {
                 string json = File.ReadAllText(_dataFilePath);
-                _attendanceRecords = JsonSerializer.Deserialize<List<AttendanceRecord>>(json);
+                _attendanceRecords = JsonSerializer.Deserialize<List<AttendanceRecord>>(json)!;
             }
             else
             {
@@ -113,7 +113,9 @@ namespace OfficeAttendanceTracker.Service
 
         private void Save()
         {
-            string json = JsonSerializer.Serialize(_attendanceRecords);
+            string json = JsonSerializer.Serialize(_attendanceRecords, new JsonSerializerOptions { WriteIndented = true});
+
+            Directory.CreateDirectory(Path.GetDirectoryName(_dataFilePath)!);
             File.WriteAllText(_dataFilePath, json);
         }
     }
