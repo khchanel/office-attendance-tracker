@@ -5,9 +5,19 @@ namespace OfficeAttendanceTracker.Service
 {
     public class AttendanceService : IAttendanceService
     {
+        private sealed class Network
+        {
+            public string? Mask { get; set; }
+            public string? Address { get; set; }
+
+            public IPAddress IPAddress => IPAddress.Parse(Address!);
+            public IPAddress SubnetMask => IPAddress.Parse(Mask!);
+
+        }
+
+
         private readonly ILogger<AttendanceService> _logger;
-        private readonly IPAddress _officeSubnetMask;
-        private readonly IPAddress _officeAddress;
+        private readonly List<Network> _networks;
         private readonly Guid _instanceId;
 
 
@@ -17,22 +27,9 @@ namespace OfficeAttendanceTracker.Service
             _logger = logger;
             _instanceId = Guid.NewGuid();
 
-            var mask = config["OfficeNetwork:SubnetMask"];
-            var addr = config["OfficeNetwork:Address"];
-
-            if (mask == null)
-            {
-                throw new ArgumentNullException("mask", "Config missing OfficeNetwork:SubnetMask");
-            }
-
-            if (addr == null)
-            {
-                throw new ArgumentNullException("addr", "config missing OfficeNetwork:Address");
-            }
-
-
-            _officeSubnetMask = IPAddress.Parse(mask);
-            _officeAddress = IPAddress.Parse(addr);
+            var networks = config.GetSection("Networks").Get<List<Network>>() 
+                ?? throw new ArgumentNullException("Networks", "config missing Networks");
+            _networks = [.. networks];
 
         }
 
@@ -60,7 +57,7 @@ namespace OfficeAttendanceTracker.Service
             {
                 _logger.LogDebug("Hostname resolved IP Address {0}: {1} ", i, addr[i].ToString());
 
-                bool isInSubnet = IsIPv4Address(addr[i]) && IsIPv4AddressInSubnet(addr[i], _officeAddress, _officeSubnetMask);
+                bool isInSubnet = IsIPv4AddressInSubnet(addr[i], _networks);
                 if (isInSubnet)
                 {
                     return true;
@@ -89,7 +86,7 @@ namespace OfficeAttendanceTracker.Service
                     {
                         _logger.LogDebug("Interface: {Name} IP Address: {Address}", networkInterface.Name, ipAddress.Address);
 
-                        bool isInSubnet = IsIPv4Address(ipAddress.Address) && IsIPv4AddressInSubnet(ipAddress.Address, _officeAddress, _officeSubnetMask);
+                        bool isInSubnet = IsIPv4AddressInSubnet(ipAddress.Address, _networks);
                         if (isInSubnet)
                         {
                             return true;
@@ -104,36 +101,39 @@ namespace OfficeAttendanceTracker.Service
             return false;
         }
 
-        private static bool IsIPv4AddressInSubnet(IPAddress ipAddress, IPAddress subnetAddress, IPAddress subnetMask)
+        private static bool IsIPv4AddressInSubnet(IPAddress ipAddress, List<Network> subnet)
         {
-            byte[] ipBytes = ipAddress.GetAddressBytes();
-            byte[] subnetBytes = subnetAddress.GetAddressBytes();
-            byte[] subnetMaskBytes = subnetMask.GetAddressBytes();
-
-            if (ipBytes.Length != subnetBytes.Length || subnetBytes.Length != subnetMaskBytes.Length)
+            if (ipAddress.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
             {
-                throw new ArgumentException("IP address, subnet address, and subnet mask must be IPv4 addresses of the same size.");
+                return false;
             }
 
-            for (int i = 0; i < ipBytes.Length; i++)
+            foreach (var network in subnet)
             {
-                byte subnetByte = (byte)(subnetBytes[i] & subnetMaskBytes[i]);
-                byte ipByte = (byte)(ipBytes[i] & subnetMaskBytes[i]);
+                byte[] ipBytes = ipAddress.GetAddressBytes();
+                byte[] subnetBytes = network.IPAddress.GetAddressBytes();
+                byte[] subnetMaskBytes = network.SubnetMask.GetAddressBytes();
 
-                if (subnetByte != ipByte)
+                if (ipBytes.Length != subnetBytes.Length || subnetBytes.Length != subnetMaskBytes.Length)
                 {
-                    return false;
+                    throw new ArgumentException("IP address, subnet address, and subnet mask must be IPv4 addresses of the same size.");
                 }
+
+                for (int i = 0; i < ipBytes.Length; i++)
+                {
+                    byte subnetByte = (byte)(subnetBytes[i] & subnetMaskBytes[i]);
+                    byte ipByte = (byte)(ipBytes[i] & subnetMaskBytes[i]);
+
+                    if (subnetByte != ipByte)
+                    {
+                        return false;
+                    }
+                }
+
             }
 
             return true;
         }
-
-        private static bool IsIPv4Address(IPAddress ipAddress)
-        {
-            return ipAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork;
-        }
-
 
 
     }
