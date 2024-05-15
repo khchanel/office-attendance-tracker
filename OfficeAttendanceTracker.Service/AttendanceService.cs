@@ -5,19 +5,9 @@ namespace OfficeAttendanceTracker.Service
 {
     public class AttendanceService : IAttendanceService
     {
-        private sealed class Network
-        {
-            public string? Mask { get; set; }
-            public string? Address { get; set; }
-
-            public IPAddress IPAddress => IPAddress.Parse(Address!);
-            public IPAddress SubnetMask => IPAddress.Parse(Mask!);
-
-        }
-
 
         private readonly ILogger<AttendanceService> _logger;
-        private readonly List<Network> _networks;
+        private readonly List<IPNetwork> _networks;
         private readonly Guid _instanceId;
 
 
@@ -26,10 +16,17 @@ namespace OfficeAttendanceTracker.Service
         {
             _logger = logger;
             _instanceId = Guid.NewGuid();
+            _networks = [];
 
-            var networks = config.GetSection("Networks").Get<List<Network>>() 
-                ?? throw new ArgumentNullException("Networks", "config missing Networks");
-            _networks = [.. networks];
+            var networkConfig = config.GetSection("Networks").Get<List<string>>();
+            if (networkConfig == null)
+                throw new ArgumentException("Missing config named \'Networks\' storing list of CIDR in appsettings");
+
+            foreach (var cidr in networkConfig)
+            {
+                var ipNetwork = IPNetwork.Parse(cidr);
+                _networks.Add(ipNetwork);
+            }
 
         }
 
@@ -38,7 +35,8 @@ namespace OfficeAttendanceTracker.Service
             _logger.LogInformation("instance id: {Instance}", _instanceId);
 
             bool isHostResolveToOffice = CheckUsingHostName();
-            bool isNicAddressInOffice = CheckUsingNicIP();
+            bool isNicAddressInOffice = CheckUsingNicIp();
+
 
             return isHostResolveToOffice && isNicAddressInOffice;
 
@@ -50,15 +48,15 @@ namespace OfficeAttendanceTracker.Service
             var hostname = Dns.GetHostName();
             _logger.LogDebug("Hostname: {Host}", hostname);
 
-            IPHostEntry ipEntry = Dns.GetHostEntry(hostname);
-            IPAddress[] addr = ipEntry.AddressList;
+            var ipEntry = Dns.GetHostEntry(hostname);
+            var ipArr = ipEntry.AddressList;
 
-            for (int i = 0; i < addr.Length; i++)
+            for (int i = 0; i < ipArr.Length; i++)
             {
-                _logger.LogDebug("Hostname resolved IP Address {0}: {1} ", i, addr[i].ToString());
+                _logger.LogDebug("Hostname resolved IP Address {0}: {1} ", i.ToString(), ipArr[i].ToString());
 
-                bool isInSubnet = IsIPv4AddressInSubnet(addr[i], _networks);
-                if (isInSubnet)
+
+                if (_networks.Any(n => n.Contains(ipArr[i])))
                 {
                     return true;
                 }
@@ -67,7 +65,7 @@ namespace OfficeAttendanceTracker.Service
         }
 
 
-        private bool CheckUsingNicIP()
+        private bool CheckUsingNicIp()
         {
 
             var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
@@ -86,10 +84,13 @@ namespace OfficeAttendanceTracker.Service
                     {
                         _logger.LogDebug("Interface: {Name} IP Address: {Address}", networkInterface.Name, ipAddress.Address);
 
-                        bool isInSubnet = IsIPv4AddressInSubnet(ipAddress.Address, _networks);
-                        if (isInSubnet)
+
+                        foreach (var n in _networks)
                         {
-                            return true;
+                            if (n.Contains(ipAddress.Address))
+                            {
+                                return true;
+                            }
                         }
 
                     }
@@ -99,40 +100,6 @@ namespace OfficeAttendanceTracker.Service
 
 
             return false;
-        }
-
-        private static bool IsIPv4AddressInSubnet(IPAddress ipAddress, List<Network> subnet)
-        {
-            if (ipAddress.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
-            {
-                return false;
-            }
-
-            foreach (var network in subnet)
-            {
-                byte[] ipBytes = ipAddress.GetAddressBytes();
-                byte[] subnetBytes = network.IPAddress.GetAddressBytes();
-                byte[] subnetMaskBytes = network.SubnetMask.GetAddressBytes();
-
-                if (ipBytes.Length != subnetBytes.Length || subnetBytes.Length != subnetMaskBytes.Length)
-                {
-                    throw new ArgumentException("IP address, subnet address, and subnet mask must be IPv4 addresses of the same size.");
-                }
-
-                for (int i = 0; i < ipBytes.Length; i++)
-                {
-                    byte subnetByte = (byte)(subnetBytes[i] & subnetMaskBytes[i]);
-                    byte ipByte = (byte)(ipBytes[i] & subnetMaskBytes[i]);
-
-                    if (subnetByte != ipByte)
-                    {
-                        return false;
-                    }
-                }
-
-            }
-
-            return true;
         }
 
 
