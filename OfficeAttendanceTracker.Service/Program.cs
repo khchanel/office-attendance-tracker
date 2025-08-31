@@ -18,7 +18,7 @@ switch (extension)
         builder.Services.AddTransient<IAttendanceRecordStore, AttendanceRecordCsvFileStore>();
         break;
     case ".json":
-        builder.Services.AddTransient<IAttendanceRecordStore, AttendanceRecordFileStore>();
+        builder.Services.AddTransient<IAttendanceRecordStore, AttendanceRecordJsonFileStore>();
         break;
     default:
         Console.Error.WriteLine($"Unsupported file extension '{extension}' in DataFileName. Supported: .csv, .json");

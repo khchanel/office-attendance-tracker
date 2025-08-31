@@ -13,7 +13,7 @@ namespace OfficeAttendanceTracker.Test
         [TestClass]
         public class FileAttendanceRecordStoreTest : AttendanceRecordStoreTestBase
         {
-            public override IAttendanceRecordStore CreateStore() => new AttendanceRecordFileStore();
+            public override IAttendanceRecordStore CreateStore() => new AttendanceRecordJsonFileStore();
         }
 
         [TestClass]

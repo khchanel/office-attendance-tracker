@@ -2,7 +2,7 @@
 
 namespace OfficeAttendanceTracker.Service
 {
-    public class AttendanceRecordFileStore : IAttendanceRecordStore
+    public class AttendanceRecordJsonFileStore : IAttendanceRecordStore
     {
 
         private readonly string _dataFilePath;
@@ -10,7 +10,7 @@ namespace OfficeAttendanceTracker.Service
 
 
 
-        public AttendanceRecordFileStore(IConfiguration? config = null)
+        public AttendanceRecordJsonFileStore(IConfiguration? config = null)
         {
             var filename = config?["DataFileName"] ?? "attendance.json";
             var filepath = string.IsNullOrEmpty(config?["DataFilePath"]) ? AppDomain.CurrentDomain.BaseDirectory : config["DataFilePath"];
