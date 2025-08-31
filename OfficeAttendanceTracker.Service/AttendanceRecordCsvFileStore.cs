@@ -1,31 +1,31 @@
-﻿
-using System.Text.Json;
+﻿using System.Globalization;
+using CsvHelper;
+using CsvHelper.Configuration;
+
 
 namespace OfficeAttendanceTracker.Service
 {
-    public class AttendanceRecordFileStore : IAttendanceRecordStore
+    public class AttendanceRecordCsvFileStore : IAttendanceRecordStore
     {
 
         private readonly string _dataFilePath;
         private List<AttendanceRecord> _attendanceRecords;
+        private CsvConfiguration _config;
 
 
-        public AttendanceRecordFileStore()
+
+        public AttendanceRecordCsvFileStore(IConfiguration? config = null)
         {
-            var filename = "attendance.json";
-            var filepath = AppDomain.CurrentDomain.BaseDirectory;
+            var filename = config?["DataFileName"] ?? "attendance.csv";
+            var filepath = string.IsNullOrEmpty(config?["DataFilePath"]) ? AppDomain.CurrentDomain.BaseDirectory : config["DataFilePath"];
             _dataFilePath = Path.Combine(filepath, filename);
             _attendanceRecords = [];
 
-            Load();
-        }
-
-        public AttendanceRecordFileStore(IConfiguration config)
-        {
-            var filename = config["DataFileName"] ?? "attendance.json";
-            var filepath = string.IsNullOrEmpty(config["DataFilePath"]) ? AppDomain.CurrentDomain.BaseDirectory : config["DataFilePath"];
-            _dataFilePath = Path.Combine(filepath, filename);
-            _attendanceRecords = [];
+            _config = new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                HasHeaderRecord = true,
+                MissingFieldFound = null
+            };
 
             Load();
         }
@@ -101,11 +101,14 @@ namespace OfficeAttendanceTracker.Service
         {
             if (File.Exists(_dataFilePath))
             {
-                string json = File.ReadAllText(_dataFilePath);
-                _attendanceRecords = JsonSerializer.Deserialize<List<AttendanceRecord>>(json)!;
+                using var reader = new StreamReader(_dataFilePath);
+                using var csv = new CsvReader(reader, _config);
+                csv.Context.RegisterClassMap<AttendanceRecordMap>();
+                _attendanceRecords = csv.GetRecords<AttendanceRecord>().ToList();
             }
             else
             {
+                _attendanceRecords = [];
                 Save();
             }
         }
@@ -113,10 +116,11 @@ namespace OfficeAttendanceTracker.Service
 
         private void Save()
         {
-            string json = JsonSerializer.Serialize(_attendanceRecords, new JsonSerializerOptions { WriteIndented = true});
-
             Directory.CreateDirectory(Path.GetDirectoryName(_dataFilePath)!);
-            File.WriteAllText(_dataFilePath, json);
+            using var writer = new StreamWriter(_dataFilePath, false); // overwrite
+            using var csv = new CsvWriter(writer, _config);
+            csv.Context.RegisterClassMap<AttendanceRecordMap>();
+            csv.WriteRecords(_attendanceRecords);
         }
     }
 }

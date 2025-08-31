@@ -3,15 +3,30 @@ using OfficeAttendanceTracker.Service;
 namespace OfficeAttendanceTracker.Test
 {
     [TestClass]
-    public class FileAttendanceRecordStoreTest
+    public abstract class AttendanceRecordStoreTestBase
     {
-        private AttendanceRecordFileStore _attendanceService;
+        protected IAttendanceRecordStore _attendanceService;
+
+        public abstract IAttendanceRecordStore CreateStore();
+
+
+        [TestClass]
+        public class FileAttendanceRecordStoreTest : AttendanceRecordStoreTestBase
+        {
+            public override IAttendanceRecordStore CreateStore() => new AttendanceRecordJsonFileStore();
+        }
+
+        [TestClass]
+        public class CsvAttendanceRecordStoreTest : AttendanceRecordStoreTestBase
+        {
+            public override IAttendanceRecordStore CreateStore() => new AttendanceRecordCsvFileStore();
+        }
 
 
         [TestInitialize]
         public void Setup()
         {
-            _attendanceService = new AttendanceRecordFileStore();
+            _attendanceService = CreateStore();
             _attendanceService.Clear();
         }
 
