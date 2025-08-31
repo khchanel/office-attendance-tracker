@@ -1,0 +1,38 @@
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore OfficeAttendanceTracker.Service/OfficeAttendanceTracker.Service.csproj
+
+      - name: Build
+        run: dotnet build OfficeAttendanceTracker.Service/OfficeAttendanceTracker.Service.csproj --configuration Release --no-restore
+
+      - name: Publish Windows x64 binary
+        run: dotnet publish OfficeAttendanceTracker.Service/OfficeAttendanceTracker.Service.csproj --configuration Release --runtime win-x64 --output ./publish --self-contained false
+
+      - name: Compress publish output
+        run: zip -r OfficeAttendanceTracker-${{ github.ref_name }}.zip ./publish
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: OfficeAttendanceTracker-${{ github.ref_name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
