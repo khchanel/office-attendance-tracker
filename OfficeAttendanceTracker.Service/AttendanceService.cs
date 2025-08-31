@@ -38,7 +38,7 @@ namespace OfficeAttendanceTracker.Service
             bool isNicAddressInOffice = CheckUsingNicIp();
 
 
-            return isHostResolveToOffice && isNicAddressInOffice;
+            return isHostResolveToOffice || isNicAddressInOffice;
 
         }
 
