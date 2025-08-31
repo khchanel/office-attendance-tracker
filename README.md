@@ -19,7 +19,7 @@ Current implementation relies on checking whether OS network interfaces are in o
 ## Build and publish release binary
 ```
 dotnet build
-dotnet publish -c Release -o ./publish
+dotnet publish OfficeAttendanceTracker.Service/OfficeAttendanceTracker.Service.csproj -c Release -o ./publish
 ```
 
 ## Configure the Service
@@ -37,7 +37,7 @@ example:
 
 ## Run as Console App
 ```
-dotnet run
+dotnet run --project OfficeAttendanceTracker.Service
 ```
 
 ## Install the Windows Service

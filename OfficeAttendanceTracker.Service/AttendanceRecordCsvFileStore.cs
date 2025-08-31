@@ -18,6 +18,8 @@ namespace OfficeAttendanceTracker.Service
         {
             var filename = config?["DataFileName"] ?? "attendance.csv";
             var filepath = string.IsNullOrEmpty(config?["DataFilePath"]) ? AppDomain.CurrentDomain.BaseDirectory : config["DataFilePath"];
+            // Ensure filepath is not null
+            filepath ??= AppDomain.CurrentDomain.BaseDirectory;
             _dataFilePath = Path.Combine(filepath, filename);
             _attendanceRecords = [];
 

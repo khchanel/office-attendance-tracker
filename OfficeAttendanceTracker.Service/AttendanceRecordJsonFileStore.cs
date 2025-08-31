@@ -14,6 +14,8 @@ namespace OfficeAttendanceTracker.Service
         {
             var filename = config?["DataFileName"] ?? "attendance.json";
             var filepath = string.IsNullOrEmpty(config?["DataFilePath"]) ? AppDomain.CurrentDomain.BaseDirectory : config["DataFilePath"];
+            // Ensure filepath is not null before using Path.Combine
+            filepath ??= AppDomain.CurrentDomain.BaseDirectory;
             _dataFilePath = Path.Combine(filepath, filename);
             _attendanceRecords = [];
             Load();
