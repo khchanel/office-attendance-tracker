@@ -3,24 +3,27 @@ using System.Net.NetworkInformation;
 
 namespace OfficeAttendanceTracker.Service
 {
+
     public class AttendanceService : IAttendanceService
     {
-
         private readonly ILogger<AttendanceService> _logger;
         private readonly List<IPNetwork> _networks;
         private readonly Guid _instanceId;
+        private readonly INetworkInfoProvider _networkInfoProvider;
 
 
         public AttendanceService(ILogger<AttendanceService> logger,
-            IConfiguration config)
+            IConfiguration config,
+            INetworkInfoProvider networkInfoProvider)
         {
             _logger = logger;
             _instanceId = Guid.NewGuid();
             _networks = [];
+            _networkInfoProvider = networkInfoProvider ?? new DefaultNetworkInfoProvider();
 
             var networkConfig = config.GetSection("Networks").Get<List<string>>();
             if (networkConfig == null)
-                throw new ArgumentException("Missing config named \'Networks\' storing list of CIDR in appsettings");
+                throw new ArgumentException("Missing config named 'Networks' storing list of CIDR in appsettings");
 
             foreach (var cidr in networkConfig)
             {
@@ -45,11 +48,10 @@ namespace OfficeAttendanceTracker.Service
 
         private bool CheckUsingHostName()
         {
-            var hostname = Dns.GetHostName();
+            var hostname = _networkInfoProvider.GetHostName();
             _logger.LogDebug("Hostname: {Host}", hostname);
 
-            var ipEntry = Dns.GetHostEntry(hostname);
-            var ipArr = ipEntry.AddressList;
+            var ipArr = _networkInfoProvider.GetHostAddresses(hostname);
 
             for (int i = 0; i < ipArr.Length; i++)
             {
@@ -67,8 +69,7 @@ namespace OfficeAttendanceTracker.Service
 
         private bool CheckUsingNicIp()
         {
-
-            var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
+            var networkInterfaces = _networkInfoProvider.GetAllNetworkInterfaces();
 
             foreach (var networkInterface in networkInterfaces)
             {

@@ -6,6 +6,7 @@ builder.Services.AddWindowsService(options =>
 {
     options.ServiceName = "Office Attendance Tracker";
 });
+builder.Services.AddTransient<INetworkInfoProvider, DefaultNetworkInfoProvider>();
 builder.Services.AddTransient<IAttendanceService, AttendanceService>();
 
 // Get DataFileName from configuration
