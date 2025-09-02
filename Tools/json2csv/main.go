@@ -13,7 +13,7 @@ import (
 type Record map[string]interface{}
 
 func main() {
-	var columnOrder = flag.String("columns", "", "Comma-separated list of columns names to specify order")
+	var columnOrder = flag.String("columns", "", "Comma-separated list of column names to specify order")
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {

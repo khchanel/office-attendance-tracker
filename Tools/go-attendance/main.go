@@ -54,10 +54,10 @@ func main() {
 	}
 
 	if err != nil {
-		log.Fatalf("Error loading records: %v", err)
+		log.Fatalf("Error loading data: %v", err)
 	}
 
-	// Count office days in the specified month
+	// Count office days for the specified month
 	officeDaysInMonth := 0
 	for _, record := range records {
 		recordDate, err := time.Parse("2006-01-02", record.Date)
