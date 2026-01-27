@@ -22,18 +22,32 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore OfficeAttendanceTracker.Service/OfficeAttendanceTracker.Service.csproj
 
+      - name: Restore Desktop dependencies
+        run: dotnet restore OfficeAttendanceTracker.Desktop/OfficeAttendanceTracker.Desktop.csproj
+
       - name: Build
         run: dotnet build OfficeAttendanceTracker.Service/OfficeAttendanceTracker.Service.csproj --configuration Release --no-restore
 
-      - name: Publish Windows x64 binary
-        run: dotnet publish OfficeAttendanceTracker.Service/OfficeAttendanceTracker.Service.csproj --configuration Release --runtime win-x64 --output ./publish --self-contained false
+      - name: Build Desktop
+        run: dotnet build OfficeAttendanceTracker.Desktop/OfficeAttendanceTracker.Desktop.csproj --configuration Release --no-restore
 
-      - name: Compress publish output
-        run: zip -r OfficeAttendanceTracker-${{ github.ref_name }}.zip ./publish
+      - name: Publish Windows x64 binary
+        run: dotnet publish OfficeAttendanceTracker.Service/OfficeAttendanceTracker.Service.csproj --configuration Release --runtime win-x64 --output ./publish/service --self-contained false
+
+      - name: Publish Desktop Windows x64 binary
+        run: dotnet publish OfficeAttendanceTracker.Desktop/OfficeAttendanceTracker.Desktop.csproj --configuration Release --runtime win-x64 --output ./publish/desktop --self-contained false
+
+      - name: Compress Service publish output
+        run: zip -r OfficeAttendanceTracker-Service-${{ github.ref_name }}.zip ./publish/service
+
+      - name: Compress Desktop publish output
+        run: zip -r OfficeAttendanceTracker-Desktop-${{ github.ref_name }}.zip ./publish/desktop
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: OfficeAttendanceTracker-${{ github.ref_name }}.zip
+          files: |
+            OfficeAttendanceTracker-Service-${{ github.ref_name }}.zip
+            OfficeAttendanceTracker-Desktop-${{ github.ref_name }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
