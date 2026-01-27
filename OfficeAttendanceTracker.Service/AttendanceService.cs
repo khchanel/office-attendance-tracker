@@ -10,16 +10,19 @@ namespace OfficeAttendanceTracker.Service
         private readonly List<IPNetwork> _networks;
         private readonly Guid _instanceId;
         private readonly INetworkInfoProvider _networkInfoProvider;
+        private readonly IAttendanceRecordStore _attendanceRecordStore;
 
 
         public AttendanceService(ILogger<AttendanceService> logger,
             IConfiguration config,
-            INetworkInfoProvider networkInfoProvider)
+            INetworkInfoProvider networkInfoProvider,
+            IAttendanceRecordStore attendanceRecordStore)
         {
             _logger = logger;
             _instanceId = Guid.NewGuid();
             _networks = [];
             _networkInfoProvider = networkInfoProvider ?? new DefaultNetworkInfoProvider();
+            _attendanceRecordStore = attendanceRecordStore;
 
             var networkConfig = config.GetSection("Networks").Get<List<string>>();
             if (networkConfig == null)
@@ -43,6 +46,12 @@ namespace OfficeAttendanceTracker.Service
 
             return isHostResolveToOffice || isNicAddressInOffice;
 
+        }
+
+        public int GetCurrentMonthAttendance()
+        {
+            var currentMonthRecords = _attendanceRecordStore.GetMonth(DateTime.Today);
+            return currentMonthRecords.Count(r => r.IsOffice);
         }
 
 
