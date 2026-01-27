@@ -7,12 +7,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWindowsForms>true</UseWindowsForms>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\OfficeAttendanceTracker.Service\OfficeAttendanceTracker.Service.csproj">
       <Private>true</Private>
-      <ExcludeAssets>contentFiles</ExcludeAssets>
     </ProjectReference>
   </ItemGroup>
 
@@ -27,6 +28,14 @@
     <None Update="appsettings.Development.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Exclude Service project's appsettings from publish to avoid conflicts -->
+    <Content Remove="..\OfficeAttendanceTracker.Service\appsettings.json" />
+    <Content Remove="..\OfficeAttendanceTracker.Service\appsettings.Development.json" />
+    <None Remove="..\OfficeAttendanceTracker.Service\appsettings.json" />
+    <None Remove="..\OfficeAttendanceTracker.Service\appsettings.Development.json" />
   </ItemGroup>
 
 </Project>
