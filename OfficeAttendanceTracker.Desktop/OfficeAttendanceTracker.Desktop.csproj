@@ -10,7 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\OfficeAttendanceTracker.Service\OfficeAttendanceTracker.Service.csproj" />
+    <ProjectReference Include="..\OfficeAttendanceTracker.Service\OfficeAttendanceTracker.Service.csproj">
+      <Private>true</Private>
+      <ExcludeAssets>contentFiles</ExcludeAssets>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
