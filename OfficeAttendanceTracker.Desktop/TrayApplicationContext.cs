@@ -1,4 +1,7 @@
+using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Windows.Forms;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using OfficeAttendanceTracker.Service;
 
@@ -11,7 +14,7 @@ namespace OfficeAttendanceTracker.Desktop
         private readonly IAttendanceService _attendanceService;
         private readonly System.Windows.Forms.Timer _updateTimer;
 
-        public TrayApplicationContext(IHost host, IAttendanceService attendanceService)
+        public TrayApplicationContext(IHost host, IAttendanceService attendanceService, IConfiguration configuration)
         {
             _host = host;
             _attendanceService = attendanceService;
@@ -28,9 +31,10 @@ namespace OfficeAttendanceTracker.Desktop
             _trayIcon.ContextMenuStrip.Items.Add(new ToolStripSeparator());
             _trayIcon.ContextMenuStrip.Items.Add("Exit", null, OnExit);
 
-            // Update timer to refresh count every 30 minute
+            // Update timer using PollIntervalMs from configuration
+            var pollIntervalMs = configuration.GetValue("PollIntervalMs", 60000); // Default 60 seconds
             _updateTimer = new System.Windows.Forms.Timer();
-            _updateTimer.Interval = 60000*30;
+            _updateTimer.Interval = pollIntervalMs;
             _updateTimer.Tick += (s, e) => UpdateAttendanceCount();
             _updateTimer.Start();
 
@@ -89,6 +93,7 @@ namespace OfficeAttendanceTracker.Desktop
         {
             try
             {
+                _attendanceService.Reload();
                 var count = _attendanceService.GetCurrentMonthAttendance();
                 var currentMonth = DateTime.Today.ToString("MMMM yyyy");
                 
@@ -102,7 +107,7 @@ namespace OfficeAttendanceTracker.Desktop
                     oldIcon.Dispose();
                 }
                 
-                _trayIcon.Text = $"Office Days: {count} ({currentMonth})";
+                _trayIcon.Text = $"Office Days for {currentMonth} is: {count} days";
                 _trayIcon.BalloonTipText = $"Current month office attendance: {count} days";
             }
             catch (Exception ex)
