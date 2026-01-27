@@ -24,6 +24,11 @@ namespace OfficeAttendanceTracker.Service
         /// </summary>
         void Clear();
 
+        /// <summary>
+        /// Refresh data from storage
+        /// </summary>
+        void Load();
+
         List<AttendanceRecord> GetAll();
         List<AttendanceRecord> GetAll(DateTime startDate, DateTime endDate);
         List<AttendanceRecord> GetMonth(DateTime? month = null);

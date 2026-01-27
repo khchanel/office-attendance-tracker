@@ -88,7 +88,7 @@ namespace OfficeAttendanceTracker.Service
         }
 
 
-        private void Load()
+        public void Load()
         {
             if (File.Exists(_dataFilePath))
             {

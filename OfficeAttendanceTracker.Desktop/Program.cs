@@ -1,11 +1,11 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using OfficeAttendanceTracker.Service;
+using OfficeAttendanceTracker.Desktop;
 
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<Worker>();
-builder.Services.AddWindowsService(options =>
-{
-    options.ServiceName = "Office Attendance Tracker";
-});
+
 builder.Services.AddTransient<INetworkInfoProvider, DefaultNetworkInfoProvider>();
 builder.Services.AddSingleton<IAttendanceService, AttendanceService>();
 
@@ -27,7 +27,19 @@ switch (extension)
         break;
 }
 
+// Add the Worker as a hosted service
+builder.Services.AddHostedService<Worker>();
+
 var host = builder.Build();
-host.Run();
 
+// Start the host in a background task
+_ = Task.Run(() => host.RunAsync());
 
+// Get the attendance service from DI
+var attendanceService = host.Services.GetRequiredService<IAttendanceService>();
+var configuration = host.Services.GetRequiredService<IConfiguration>();
+
+// Initialize and run Windows Forms application with system tray
+System.Windows.Forms.Application.EnableVisualStyles();
+System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+System.Windows.Forms.Application.Run(new TrayApplicationContext(host, attendanceService, configuration));

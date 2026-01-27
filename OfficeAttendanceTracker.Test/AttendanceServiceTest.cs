@@ -16,8 +16,9 @@ namespace OfficeAttendanceTracker.Test
             var loggerMock = new Mock<ILogger<AttendanceService>>();
             var config = new ConfigurationBuilder().Build(); // No Networks section
             var networkProviderMock = new Mock<INetworkInfoProvider>();
+            var storeMock = new Mock<IAttendanceRecordStore>();
 
-            Assert.ThrowsExactly<ArgumentException>(() => new AttendanceService(loggerMock.Object, config, networkProviderMock.Object));
+            Assert.ThrowsExactly<ArgumentException>(() => new AttendanceService(loggerMock.Object, config, networkProviderMock.Object, storeMock.Object));
         }
 
         [TestMethod]
@@ -32,8 +33,9 @@ namespace OfficeAttendanceTracker.Test
                 .AddInMemoryCollection(inMemorySettings)
                 .Build();
             var networkProviderMock = new Mock<INetworkInfoProvider>();
+            var storeMock = new Mock<IAttendanceRecordStore>();
 
-            var service = new AttendanceService(loggerMock.Object, config, networkProviderMock.Object);
+            var service = new AttendanceService(loggerMock.Object, config, networkProviderMock.Object, storeMock.Object);
             Assert.IsNotNull(service);
         }
 
@@ -53,8 +55,9 @@ namespace OfficeAttendanceTracker.Test
             networkProviderMock.Setup(p => p.GetHostName()).Returns("testhost");
             networkProviderMock.Setup(p => p.GetHostAddresses(It.IsAny<string>())).Returns(new[] { IPAddress.Parse("192.168.1.10") });
             networkProviderMock.Setup(p => p.GetAllNetworkInterfaces()).Returns(new List<NetworkInterface>());
+            var storeMock = new Mock<IAttendanceRecordStore>();
 
-            var service = new AttendanceService(loggerMock.Object, config, networkProviderMock.Object);
+            var service = new AttendanceService(loggerMock.Object, config, networkProviderMock.Object, storeMock.Object);
             Assert.IsTrue(service.CheckAttendance());
         }
 
@@ -74,8 +77,9 @@ namespace OfficeAttendanceTracker.Test
             networkProviderMock.Setup(p => p.GetHostName()).Returns("testhost");
             networkProviderMock.Setup(p => p.GetHostAddresses(It.IsAny<string>())).Returns(new[] { IPAddress.Parse("10.0.0.1") });
             networkProviderMock.Setup(p => p.GetAllNetworkInterfaces()).Returns(new List<NetworkInterface>());
+            var storeMock = new Mock<IAttendanceRecordStore>();
 
-            var service = new AttendanceService(loggerMock.Object, config, networkProviderMock.Object);
+            var service = new AttendanceService(loggerMock.Object, config, networkProviderMock.Object, storeMock.Object);
             Assert.IsFalse(service.CheckAttendance());
         }
     }
