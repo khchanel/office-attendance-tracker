@@ -3,9 +3,15 @@
 [![build](https://github.com/khchanel/office-attendance-tracker/actions/workflows/dotnet.yml/badge.svg)](https://github.com/khchanel/office-attendance-tracker/actions/workflows/dotnet.yml)
 [![build](https://github.com/khchanel/office-attendance-tracker/actions/workflows/go-attendance.yml/badge.svg)](https://github.com/khchanel/office-attendance-tracker/actions/workflows/go-attendance.yml)
 
-A background application that tracks your office attendance by monitoring network connectivity.
-Detects when you're connected to configured office networks and logs attendance records.
-Currently support file-based storage in CSV or JSON format.
+Automatically detect and tracks your office attendance and monitor compliance status using Windows tray app or background service.
+
+## Features
+- Automatic detection of office presence based on configured network CIDR ranges
+- Configurable
+- Currently support file-based storage in CSV or JSON format.
+- Lightweight with minimal resource usage
+- Easy deployment as Windows Service or Desktop App
+- Did I mention its fully automatic? - no manual check-in/out needed!
 
 ## Deployment Options
 

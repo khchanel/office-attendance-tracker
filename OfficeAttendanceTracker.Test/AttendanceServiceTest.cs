@@ -134,15 +134,46 @@ namespace OfficeAttendanceTracker.Test
             Assert.IsTrue(businessDays <= 23, "Business days should not exceed 23 (max Mon-Fri in a month)");
         }
 
+        [TestMethod]
+        public void GetBusinessDaysUpToToday_ReturnsPositiveNumber()
+        {
+            var service = CreateService();
+            var businessDays = service.GetBusinessDaysUpToToday();
+            
+            Assert.IsTrue(businessDays >= 0, "Business days up to today should be non-negative");
+        }
+
+        [TestMethod]
+        public void GetBusinessDaysUpToToday_LessThanOrEqualToTotal()
+        {
+            var service = CreateService();
+            var businessDaysUpToToday = service.GetBusinessDaysUpToToday();
+            var totalBusinessDays = service.GetBusinessDaysInCurrentMonth();
+            
+            Assert.IsTrue(businessDaysUpToToday <= totalBusinessDays, 
+                "Business days up to today should not exceed total business days in month");
+        }
+
         #endregion
 
         #region GetComplianceStatus Tests
 
         [TestMethod]
-        public void GetComplianceStatus_ReturnsCompliant_WhenAttendanceExceedsThreshold()
+        public void GetComplianceStatus_ReturnsAbsolutelyFine_WhenAttendanceMeetsEntireMonthRequirement()
         {
-            // Arrange: 50% threshold with 20 business days = 10 required days
-            var service = CreateServiceWithAttendanceRecords(15, new Dictionary<string, string>
+            // Arrange: Attendance meets entire month's requirement
+            // With 50% threshold and 20+ business days total, 10+ required for entire month
+            var config = BuildConfig(new Dictionary<string, string>
+            {
+                {"ComplianceThreshold", "0.5"}
+            });
+            
+            var tempService = CreateService(config);
+            var totalBusinessDays = tempService.GetBusinessDaysInCurrentMonth();
+            var requiredForEntireMonth = (int)Math.Ceiling(totalBusinessDays * 0.5);
+
+            // Set attendance to meet entire month's requirement
+            var service = CreateServiceWithAttendanceRecords(requiredForEntireMonth, new Dictionary<string, string>
             {
                 {"ComplianceThreshold", "0.5"}
             });
@@ -151,15 +182,34 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            Assert.AreEqual(ComplianceStatus.Compliant, status);
+            Assert.AreEqual(ComplianceStatus.AbsolutelyFine, status);
         }
 
         [TestMethod]
-        public void GetComplianceStatus_ReturnsWarning_WhenAttendanceNearThreshold()
+        public void GetComplianceStatus_ReturnsCompliant_WhenAttendanceMeetsRequirement()
         {
-            // Arrange: Create scenario where attendance is within warning zone (within 20% of threshold)
-            // Mock 9 office days (assuming ~20 business days: 50% = 10 required, warning = 6, so 9 is in warning zone)
-            var service = CreateServiceWithAttendanceRecords(9, new Dictionary<string, string>
+            // Arrange: Attendance meets rolling (up to today) requirement but not entire month
+            var config = BuildConfig(new Dictionary<string, string>
+            {
+                {"ComplianceThreshold", "0.5"}
+            });
+            
+            var tempService = CreateService(config);
+            var businessDaysUpToToday = tempService.GetBusinessDaysUpToToday();
+            var totalBusinessDays = tempService.GetBusinessDaysInCurrentMonth();
+            var requiredForRolling = (int)Math.Ceiling(businessDaysUpToToday * 0.5);
+            var requiredForEntireMonth = (int)Math.Ceiling(totalBusinessDays * 0.5);
+
+            // Set attendance to meet rolling but not entire month (if possible)
+            // If businessDaysUpToToday == totalBusinessDays, this will be AbsolutelyFine instead
+            var attendanceDays = requiredForRolling;
+            if (attendanceDays >= requiredForEntireMonth)
+            {
+                // If we're at end of month, test will show AbsolutelyFine instead
+                attendanceDays = requiredForEntireMonth - 1;
+            }
+
+            var service = CreateServiceWithAttendanceRecords(attendanceDays, new Dictionary<string, string>
             {
                 {"ComplianceThreshold", "0.5"}
             });
@@ -168,15 +218,55 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            // Note: This might be Warning or Compliant depending on actual business days
-            Assert.IsTrue(status == ComplianceStatus.Warning || status == ComplianceStatus.Compliant);
+            // Should be Compliant or AbsolutelyFine (if we're at end of month)
+            Assert.IsTrue(status == ComplianceStatus.Compliant || status == ComplianceStatus.AbsolutelyFine);
         }
 
         [TestMethod]
-        public void GetComplianceStatus_ReturnsCritical_WhenAttendanceBelowWarning()
+        public void GetComplianceStatus_ReturnsWarning_WhenAttendanceBelowRollingButAboveWarningThreshold()
         {
-            // Arrange: Low attendance scenario - only 2 office days (well below 50% threshold)
-            var service = CreateServiceWithAttendanceRecords(2, new Dictionary<string, string>
+            // Arrange: Attendance between warningThreshold and rolling requirement
+            var config = BuildConfig(new Dictionary<string, string>
+            {
+                {"ComplianceThreshold", "0.5"}
+            });
+            
+            var tempService = CreateService(config);
+            var businessDaysUpToToday = tempService.GetBusinessDaysUpToToday();
+            var requiredForRolling = (int)Math.Ceiling(businessDaysUpToToday * 0.5);
+            var marginDays = (int)(businessDaysUpToToday * 0.2);
+            var warningThreshold = requiredForRolling - marginDays;
+            var attendanceDays = Math.Max(1, warningThreshold + 1); // Just above warning threshold
+
+            var service = CreateServiceWithAttendanceRecords(attendanceDays, new Dictionary<string, string>
+            {
+                {"ComplianceThreshold", "0.5"}
+            });
+
+            // Act
+            var status = service.GetComplianceStatus();
+
+            // Assert
+            Assert.AreEqual(ComplianceStatus.Warning, status);
+        }
+
+        [TestMethod]
+        public void GetComplianceStatus_ReturnsCritical_WhenAttendanceBelowWarningThreshold()
+        {
+            // Arrange: Attendance below warningThreshold (based on rolling days)
+            var config = BuildConfig(new Dictionary<string, string>
+            {
+                {"ComplianceThreshold", "0.5"}
+            });
+            
+            var tempService = CreateService(config);
+            var businessDaysUpToToday = tempService.GetBusinessDaysUpToToday();
+            var requiredForRolling = (int)Math.Ceiling(businessDaysUpToToday * 0.5);
+            var marginDays = (int)(businessDaysUpToToday * 0.2);
+            var warningThreshold = requiredForRolling - marginDays;
+            var attendanceDays = Math.Max(0, warningThreshold - 2); // Well below warning
+
+            var service = CreateServiceWithAttendanceRecords(attendanceDays, new Dictionary<string, string>
             {
                 {"ComplianceThreshold", "0.5"}
             });
@@ -189,21 +279,19 @@ namespace OfficeAttendanceTracker.Test
         }
 
         [TestMethod]
-        public void GetComplianceStatus_ReturnsCompliant_WhenAttendanceExactlyAtThreshold()
+        public void GetComplianceStatus_ReturnsAbsolutelyFine_WhenAttendanceExactlyAtEntireMonthThreshold()
         {
-            // Arrange: Attendance exactly at 50% threshold
+            // Arrange: Attendance exactly at entire month's requirement
             var config = BuildConfig(new Dictionary<string, string>
             {
                 {"ComplianceThreshold", "0.5"}
             });
             
-            // Calculate exact threshold
             var tempService = CreateService(config);
-            var businessDays = tempService.GetBusinessDaysInCurrentMonth();
-            var requiredDays = (int)Math.Ceiling(businessDays * 0.5);
+            var totalBusinessDays = tempService.GetBusinessDaysInCurrentMonth();
+            var requiredForEntireMonth = (int)Math.Ceiling(totalBusinessDays * 0.5);
 
-            // Create service with exactly required days
-            var service = CreateServiceWithAttendanceRecords(requiredDays, new Dictionary<string, string>
+            var service = CreateServiceWithAttendanceRecords(requiredForEntireMonth, new Dictionary<string, string>
             {
                 {"ComplianceThreshold", "0.5"}
             });
@@ -212,15 +300,25 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            Assert.AreEqual(ComplianceStatus.Compliant, status);
+            Assert.AreEqual(ComplianceStatus.AbsolutelyFine, status);
         }
 
         [TestMethod]
         public void GetComplianceStatus_UsesCustomThreshold_WhenConfigured()
         {
             // Arrange: Test with 60% threshold
-            // Mock 10 office days (50% of 20 days, but less than 60%)
-            var service = CreateServiceWithAttendanceRecords(10, new Dictionary<string, string>
+            var config = BuildConfig(new Dictionary<string, string>
+            {
+                {"ComplianceThreshold", "0.6"}
+            });
+            
+            var tempService = CreateService(config);
+            var businessDaysUpToToday = tempService.GetBusinessDaysUpToToday();
+            var requiredForRolling = (int)Math.Ceiling(businessDaysUpToToday * 0.6);
+            // Set attendance below rolling requirement
+            var attendanceDays = Math.Max(0, requiredForRolling - 1);
+
+            var service = CreateServiceWithAttendanceRecords(attendanceDays, new Dictionary<string, string>
             {
                 {"ComplianceThreshold", "0.6"}
             });
@@ -229,22 +327,31 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            // With 60% threshold and only 50% attendance, should not be compliant
+            // With attendance below rolling required, should be Warning or Critical (not Compliant or AbsolutelyFine)
+            Assert.IsTrue(status == ComplianceStatus.Warning || status == ComplianceStatus.Critical);
             Assert.AreNotEqual(ComplianceStatus.Compliant, status);
+            Assert.AreNotEqual(ComplianceStatus.AbsolutelyFine, status);
         }
 
         [TestMethod]
         public void GetComplianceStatus_UsesDefaultThreshold_WhenNotConfigured()
         {
             // Arrange: No threshold in config, should default to 0.5
-            // Mock 15 office days (should be compliant with default 50%)
-            var service = CreateServiceWithAttendanceRecords(15);  // No ComplianceThreshold
+            var config = BuildConfig();  // No ComplianceThreshold, defaults to 0.5
+            
+            var tempService = CreateService(config);
+            var totalBusinessDays = tempService.GetBusinessDaysInCurrentMonth();
+            var requiredForEntireMonth = (int)Math.Ceiling(totalBusinessDays * 0.5);
+            // Set attendance to meet entire month's requirement
+            var attendanceDays = requiredForEntireMonth;
+
+            var service = CreateServiceWithAttendanceRecords(attendanceDays);  // No ComplianceThreshold
 
             // Act
             var status = service.GetComplianceStatus();
 
             // Assert
-            Assert.AreEqual(ComplianceStatus.Compliant, status);
+            Assert.AreEqual(ComplianceStatus.AbsolutelyFine, status);
         }
 
 

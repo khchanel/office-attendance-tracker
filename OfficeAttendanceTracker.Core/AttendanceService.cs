@@ -81,17 +81,54 @@ namespace OfficeAttendanceTracker.Core
             return businessDays;
         }
 
+        public int GetBusinessDaysUpToToday()
+        {
+            var today = DateTime.Today;
+            var firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
+
+            int businessDays = 0;
+            for (var date = firstDayOfMonth; date <= today; date = date.AddDays(1))
+            {
+                if (date.DayOfWeek >= DayOfWeek.Monday && date.DayOfWeek <= DayOfWeek.Friday)
+                {
+                    businessDays++;
+                }
+            }
+
+            return businessDays;
+        }
+
         public ComplianceStatus GetComplianceStatus()
         {
+            const double margin = 0.2; // 20% margin
             var attendance = GetCurrentMonthAttendance();
-            var businessDays = GetBusinessDaysInCurrentMonth();
-            var requiredDays = (int)Math.Ceiling(businessDays * _complianceThreshold);
-            var warningThreshold = requiredDays - (int)(businessDays * 0.2);
+            
+            // Rolling: business days up to today (for current compliance target)
+            var businessDaysUpToToday = GetBusinessDaysUpToToday();
+            
+            // Total: entire month's business days (for AbsolutelyFine status)
+            var totalBusinessDaysInMonth = GetBusinessDaysInCurrentMonth();
+            
+            // Required for entire month - AbsolutelyFine threshold
+            var requiredForEntireMonth = (int)Math.Ceiling(totalBusinessDaysInMonth * _complianceThreshold);
+            
+            // Required for rolling (up to today) - Compliant threshold
+            var requiredForRolling = (int)Math.Ceiling(businessDaysUpToToday * _complianceThreshold);
+            var warningThreshold = requiredForRolling - (int)(businessDaysUpToToday * margin);
 
-            if (attendance >= requiredDays)
+            // AbsolutelyFine: Already met entire month's requirement
+            if (attendance >= requiredForEntireMonth)
+                return ComplianceStatus.AbsolutelyFine;
+            
+            // Compliant: Meeting rolling requirement (up to today)
+            else if (attendance >= requiredForRolling)
                 return ComplianceStatus.Compliant;
+            
+            // Warning: Close to rolling requirement but below it
             else if (attendance >= warningThreshold)
                 return ComplianceStatus.Warning;
+            
+            // Critical: Far below rolling requirement
             else
                 return ComplianceStatus.Critical;
         }

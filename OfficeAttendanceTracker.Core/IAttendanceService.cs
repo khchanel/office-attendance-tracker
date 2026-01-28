@@ -13,7 +13,12 @@
         int GetBusinessDaysInCurrentMonth();
         
         /// <summary>
-        /// Determines the compliance status based on current attendance
+        /// Calculates the number of business days (Mon-Fri) up to today in the current month
+        /// </summary>
+        int GetBusinessDaysUpToToday();
+        
+        /// <summary>
+        /// Determines the compliance status based on rolling attendance (up to current date)
         /// </summary>
         ComplianceStatus GetComplianceStatus();
     }

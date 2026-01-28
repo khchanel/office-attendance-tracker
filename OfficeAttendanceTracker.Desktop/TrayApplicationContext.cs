@@ -58,6 +58,7 @@ namespace OfficeAttendanceTracker.Desktop
         {
             return status switch
             {
+                ComplianceStatus.AbsolutelyFine => Color.FromArgb(34, 139, 34), // Green
                 ComplianceStatus.Compliant => Color.FromArgb(0, 120, 215),    // Blue
                 ComplianceStatus.Warning => Color.FromArgb(255, 140, 0),      // Orange
                 ComplianceStatus.Critical => Color.FromArgb(220, 20, 60),     // Red
