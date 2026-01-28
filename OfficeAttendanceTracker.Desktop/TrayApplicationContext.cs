@@ -53,8 +53,12 @@ namespace OfficeAttendanceTracker.Desktop
 
         private Icon CreateIconWithNumber(int number)
         {
-            // Create a bitmap to draw the number
-            int iconSize = 32;
+            // bitmap size and font scale
+            // 32x32 scale 1.0x | 1 digit font 24 | 2 digit font 20
+            // 48x48 scale 1.5x | 1 digit font 36 | 2 digit font 30
+            // 64x64 scale 2.0x | 1 digit font 48 | 2 digit font 40
+
+            int iconSize = 48;
             using (Bitmap bitmap = new Bitmap(iconSize, iconSize))
             using (Graphics g = Graphics.FromImage(bitmap))
             {
@@ -71,14 +75,15 @@ namespace OfficeAttendanceTracker.Desktop
                 // Draw border
                 using (Pen borderPen = new Pen(Color.White, 2))
                 {
-                    g.DrawEllipse(borderPen, 1, 1, iconSize - 3, iconSize - 3);
+                    g.DrawEllipse(borderPen, 1, 1, iconSize - 3, iconSize - 3);  // 32x32
+                    //g.DrawEllipse(borderPen, 2, 2, iconSize - 4, iconSize - 4); // 48x48 or 64x64
                 }
 
                 // Draw the number
                 string text = number.ToString();
 
-                // Adjust font size based on number of digits
-                int fontSize = text.Length == 1 ? 18 : (text.Length == 2 ? 14 : 10);
+                // Only need 1-digit (0-9) or 2-digit (10-31) - max is 31 days per month
+                int fontSize = text.Length == 1 ? 36 : 30;
                 using (Font font = new Font("Segoe UI", fontSize, FontStyle.Bold, GraphicsUnit.Pixel))
                 using (SolidBrush textBrush = new SolidBrush(Color.White))
                 {
