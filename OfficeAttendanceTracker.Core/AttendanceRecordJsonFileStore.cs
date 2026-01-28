@@ -25,6 +25,17 @@ namespace OfficeAttendanceTracker.Service
 
         public AttendanceRecord Add(bool isOffice, DateTime date)
         {
+            // Check if record already exists for this date
+            var existingRecord = GetDate(date);
+            if (existingRecord != null)
+            {
+                // Update existing record instead of adding duplicate
+                existingRecord.IsOffice = isOffice;
+                Save();
+                return existingRecord;
+            }
+
+            // Add new record
             var record = new AttendanceRecord
             {
                 Date = date.Date, // time part is truncated
@@ -32,7 +43,6 @@ namespace OfficeAttendanceTracker.Service
             };
 
             _attendanceRecords.Add(record);
-
             Save();
 
             return record;
@@ -53,19 +63,32 @@ namespace OfficeAttendanceTracker.Service
         public List<AttendanceRecord> GetAll(DateTime startDate, DateTime endDate)
         {
             return _attendanceRecords
-                .FindAll(record => record.Date >= startDate.Date && record.Date <= endDate.Date);
+                .FindAll(record => record.Date >= startDate.Date && record.Date <= endDate.Date)
+                .GroupBy(r => r.Date)
+                .Select(g => g.Last())
+                .OrderBy(r => r.Date)
+                .ToList();
         }
 
         public List<AttendanceRecord> GetAll()
         {
-            return _attendanceRecords;
+            return _attendanceRecords
+                .GroupBy(r => r.Date)
+                .Select(g => g.Last())
+                .OrderBy(r => r.Date)
+                .ToList();
         }
 
         public List<AttendanceRecord> GetMonth(DateTime? month = null)
         {
             if (month == null) month = DateTime.Today.Date;
 
-            return _attendanceRecords.FindAll(record => record.Date.Year == month.Value.Year && record.Date.Month == month.Value.Month);
+            return _attendanceRecords
+                .FindAll(record => record.Date.Year == month.Value.Year && record.Date.Month == month.Value.Month)
+                .GroupBy(r => r.Date)
+                .Select(g => g.Last())
+                .OrderBy(r => r.Date)
+                .ToList();
         }
 
         public AttendanceRecord? GetDate(DateTime date)
@@ -94,10 +117,18 @@ namespace OfficeAttendanceTracker.Service
             if (File.Exists(_dataFilePath))
             {
                 string json = File.ReadAllText(_dataFilePath);
-                _attendanceRecords = JsonSerializer.Deserialize<List<AttendanceRecord>>(json)!;
+                var records = JsonSerializer.Deserialize<List<AttendanceRecord>>(json)!;
+                
+                // Deduplicate by date - keep the last occurrence (most recent in file)
+                _attendanceRecords = records
+                    .GroupBy(r => r.Date)
+                    .Select(g => g.Last())
+                    .OrderBy(r => r.Date)
+                    .ToList();
             }
             else
             {
+                _attendanceRecords = [];
                 Save();
             }
         }
