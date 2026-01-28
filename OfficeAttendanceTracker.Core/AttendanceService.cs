@@ -13,19 +13,22 @@ namespace OfficeAttendanceTracker.Core
         private readonly Guid _instanceId;
         private readonly INetworkInfoProvider _networkInfoProvider;
         private readonly IAttendanceRecordStore _attendanceRecordStore;
+        private readonly IDateTimeProvider _dateTimeProvider;
         private readonly double _complianceThreshold;
 
 
         public AttendanceService(ILogger<AttendanceService> logger,
             IConfiguration config,
             INetworkInfoProvider networkInfoProvider,
-            IAttendanceRecordStore attendanceRecordStore)
+            IAttendanceRecordStore attendanceRecordStore,
+            IDateTimeProvider? dateTimeProvider = null)
         {
             _logger = logger;
             _instanceId = Guid.NewGuid();
             _networks = [];
             _networkInfoProvider = networkInfoProvider ?? new DefaultNetworkInfoProvider();
             _attendanceRecordStore = attendanceRecordStore;
+            _dateTimeProvider = dateTimeProvider ?? new DefaultDateTimeProvider();
             _complianceThreshold = config.GetValue("ComplianceThreshold", 0.5); // Default 50%
 
             var networkConfig = config.GetSection("Networks").Get<List<string>>();
@@ -59,13 +62,13 @@ namespace OfficeAttendanceTracker.Core
 
         public int GetCurrentMonthAttendance()
         {
-            var currentMonthRecords = _attendanceRecordStore.GetMonth(DateTime.Today);
+            var currentMonthRecords = _attendanceRecordStore.GetMonth(_dateTimeProvider.Today);
             return currentMonthRecords.Count(r => r.IsOffice);
         }
 
         public int GetBusinessDaysInCurrentMonth()
         {
-            var today = DateTime.Today;
+            var today = _dateTimeProvider.Today;
             var firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
             var lastDayOfMonth = new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
 
@@ -83,7 +86,7 @@ namespace OfficeAttendanceTracker.Core
 
         public int GetBusinessDaysUpToToday()
         {
-            var today = DateTime.Today;
+            var today = _dateTimeProvider.Today;
             var firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
 
             int businessDays = 0;
@@ -139,7 +142,7 @@ namespace OfficeAttendanceTracker.Core
             if (attendance == null)
             {
                 _logger.LogInformation("saving first record for the day");
-                attendance = _attendanceRecordStore.Add(false, DateTime.Today);
+                attendance = _attendanceRecordStore.Add(false, _dateTimeProvider.Today);
             }
 
             var isAtOfficeNow = CheckAttendance();
@@ -150,7 +153,7 @@ namespace OfficeAttendanceTracker.Core
                 if (!attendance.IsOffice)
                 {
                     _logger.LogInformation("updating office attendance for today");
-                    _attendanceRecordStore.Update(true, DateTime.Today);
+                    _attendanceRecordStore.Update(true, _dateTimeProvider.Today);
                 }
             }
             else

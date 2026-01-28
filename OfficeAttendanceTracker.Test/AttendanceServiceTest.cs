@@ -13,6 +13,7 @@ namespace OfficeAttendanceTracker.Test
         private Mock<ILogger<AttendanceService>> _loggerMock = null!;
         private Mock<INetworkInfoProvider> _networkProviderMock = null!;
         private Mock<IAttendanceRecordStore> _storeMock = null!;
+        private Mock<IDateTimeProvider> _dateTimeProviderMock = null!;
 
         [TestInitialize]
         public void Setup()
@@ -20,6 +21,10 @@ namespace OfficeAttendanceTracker.Test
             _loggerMock = new Mock<ILogger<AttendanceService>>();
             _networkProviderMock = new Mock<INetworkInfoProvider>();
             _storeMock = new Mock<IAttendanceRecordStore>();
+            _dateTimeProviderMock = new Mock<IDateTimeProvider>();
+            
+            // Default to mid-January 2025 (a weekday) for predictable testing
+            _dateTimeProviderMock.Setup(d => d.Today).Returns(new DateTime(2025, 1, 15)); // Wednesday
         }
 
         #region Helper Methods
@@ -47,13 +52,18 @@ namespace OfficeAttendanceTracker.Test
         private AttendanceService CreateService(IConfiguration? config = null)
         {
             config ??= BuildConfig();
-            return new AttendanceService(_loggerMock.Object, config, _networkProviderMock.Object, _storeMock.Object);
+            return new AttendanceService(_loggerMock.Object, config, _networkProviderMock.Object, _storeMock.Object, _dateTimeProviderMock.Object);
+        }
+
+        private void SetMockDate(DateTime date)
+        {
+            _dateTimeProviderMock.Setup(d => d.Today).Returns(date);
         }
 
         private AttendanceService CreateServiceWithAttendanceRecords(int officeCount, Dictionary<string, string>? additionalConfig = null)
         {
             var records = Enumerable.Range(1, officeCount)
-                .Select(i => new AttendanceRecord { Date = DateTime.Today.AddDays(-i), IsOffice = true })
+                .Select(i => new AttendanceRecord { Date = _dateTimeProviderMock.Object.Today.AddDays(-i), IsOffice = true })
                 .ToList();
             _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns(records);
 
@@ -188,26 +198,57 @@ namespace OfficeAttendanceTracker.Test
         [TestMethod]
         public void GetComplianceStatus_ReturnsCompliant_WhenAttendanceMeetsRequirement()
         {
-            // Arrange: Attendance meets rolling (up to today) requirement but not entire month
+            // Arrange: Set test date to mid-month January 15, 2025 (Wednesday)
+            // This ensures businessDaysUpToToday < totalBusinessDays
+            SetMockDate(new DateTime(2025, 1, 15));
+            
             var config = BuildConfig(new Dictionary<string, string>
             {
                 {"ComplianceThreshold", "0.5"}
             });
             
             var tempService = CreateService(config);
-            var businessDaysUpToToday = tempService.GetBusinessDaysUpToToday();
-            var totalBusinessDays = tempService.GetBusinessDaysInCurrentMonth();
-            var requiredForRolling = (int)Math.Ceiling(businessDaysUpToToday * 0.5);
-            var requiredForEntireMonth = (int)Math.Ceiling(totalBusinessDays * 0.5);
+            var businessDaysUpToToday = tempService.GetBusinessDaysUpToToday(); // Should be ~11
+            var totalBusinessDays = tempService.GetBusinessDaysInCurrentMonth(); // Should be 23
+            var requiredForRolling = (int)Math.Ceiling(businessDaysUpToToday * 0.5); // ~6
+            var requiredForEntireMonth = (int)Math.Ceiling(totalBusinessDays * 0.5); // ~12
 
-            // Set attendance to meet rolling but not entire month (if possible)
-            // If businessDaysUpToToday == totalBusinessDays, this will be AbsolutelyFine instead
+            // Set attendance to meet rolling requirement but not entire month
             var attendanceDays = requiredForRolling;
-            if (attendanceDays >= requiredForEntireMonth)
+
+            _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>()))
+                .Returns(Enumerable.Range(1, attendanceDays)
+                    .Select(i => new AttendanceRecord { Date = new DateTime(2025, 1, 15).AddDays(-i), IsOffice = true })
+                    .ToList());
+
+            var service = CreateService(config);
+
+            // Act
+            var status = service.GetComplianceStatus();
+
+            // Assert
+            Assert.AreEqual(ComplianceStatus.Compliant, status, 
+                $"Expected Compliant with {attendanceDays} days (rolling required: {requiredForRolling}, entire month required: {requiredForEntireMonth}, businessDaysUpToToday: {businessDaysUpToToday}, totalBusinessDays: {totalBusinessDays})");
+        }
+
+        [TestMethod]
+        public void GetComplianceStatus_ReturnsCompliant_AtEndOfMonth()
+        {
+            // Arrange: Set test date to end of month January 31, 2025 (Friday)
+            // At end of month, if attendance meets rolling it also meets entire month
+            SetMockDate(new DateTime(2025, 1, 31));
+            
+            var config = BuildConfig(new Dictionary<string, string>
             {
-                // If we're at end of month, test will show AbsolutelyFine instead
-                attendanceDays = requiredForEntireMonth - 1;
-            }
+                {"ComplianceThreshold", "0.5"}
+            });
+            
+            var tempService = CreateService(config);
+            var totalBusinessDays = tempService.GetBusinessDaysInCurrentMonth(); // 23
+            var requiredForEntireMonth = (int)Math.Ceiling(totalBusinessDays * 0.5); // 12
+
+            // Set attendance to one less than entire month's requirement
+            var attendanceDays = requiredForEntireMonth - 1; // 11
 
             var service = CreateServiceWithAttendanceRecords(attendanceDays, new Dictionary<string, string>
             {
@@ -218,8 +259,8 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            // Should be Compliant or AbsolutelyFine (if we're at end of month)
-            Assert.IsTrue(status == ComplianceStatus.Compliant || status == ComplianceStatus.AbsolutelyFine);
+            // At end of month with 11 days (need 12 for entire month), should be Warning
+            Assert.AreEqual(ComplianceStatus.Warning, status);
         }
 
         [TestMethod]

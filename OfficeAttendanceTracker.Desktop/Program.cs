@@ -7,6 +7,7 @@ using OfficeAttendanceTracker.Desktop;
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddTransient<INetworkInfoProvider, DefaultNetworkInfoProvider>();
+builder.Services.AddSingleton<IDateTimeProvider, DefaultDateTimeProvider>();
 builder.Services.AddSingleton<IAttendanceService, AttendanceService>();
 
 // Get DataFileName from configuration
