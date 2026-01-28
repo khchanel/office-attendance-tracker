@@ -29,6 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\OfficeAttendanceTracker.Core\OfficeAttendanceTracker.Core.csproj" />
     <ProjectReference Include="..\OfficeAttendanceTracker.Service\OfficeAttendanceTracker.Service.csproj" />
   </ItemGroup>
 

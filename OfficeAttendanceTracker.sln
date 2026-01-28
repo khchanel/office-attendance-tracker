@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.9.34728.123
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11415.280 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OfficeAttendanceTracker.Service", "OfficeAttendanceTracker.Service\OfficeAttendanceTracker.Service.csproj", "{A2C199C9-0961-4258-8E04-A8193C5C83F1}"
 EndProject
@@ -14,6 +14,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfficeAttendanceTracker.Desktop", "OfficeAttendanceTracker.Desktop\OfficeAttendanceTracker.Desktop.csproj", "{B179B08D-DCE3-45EF-AF53-79883C6E25E7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfficeAttendanceTracker.Core", "OfficeAttendanceTracker.Core\OfficeAttendanceTracker.Core.csproj", "{AB460E1C-D7B5-4F78-B5F3-E74743FA6AD0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -61,6 +63,18 @@ Global
 		{B179B08D-DCE3-45EF-AF53-79883C6E25E7}.Release|x64.Build.0 = Release|Any CPU
 		{B179B08D-DCE3-45EF-AF53-79883C6E25E7}.Release|x86.ActiveCfg = Release|Any CPU
 		{B179B08D-DCE3-45EF-AF53-79883C6E25E7}.Release|x86.Build.0 = Release|Any CPU
+		{AB460E1C-D7B5-4F78-B5F3-E74743FA6AD0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB460E1C-D7B5-4F78-B5F3-E74743FA6AD0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB460E1C-D7B5-4F78-B5F3-E74743FA6AD0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{AB460E1C-D7B5-4F78-B5F3-E74743FA6AD0}.Debug|x64.Build.0 = Debug|Any CPU
+		{AB460E1C-D7B5-4F78-B5F3-E74743FA6AD0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{AB460E1C-D7B5-4F78-B5F3-E74743FA6AD0}.Debug|x86.Build.0 = Debug|Any CPU
+		{AB460E1C-D7B5-4F78-B5F3-E74743FA6AD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB460E1C-D7B5-4F78-B5F3-E74743FA6AD0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB460E1C-D7B5-4F78-B5F3-E74743FA6AD0}.Release|x64.ActiveCfg = Release|Any CPU
+		{AB460E1C-D7B5-4F78-B5F3-E74743FA6AD0}.Release|x64.Build.0 = Release|Any CPU
+		{AB460E1C-D7B5-4F78-B5F3-E74743FA6AD0}.Release|x86.ActiveCfg = Release|Any CPU
+		{AB460E1C-D7B5-4F78-B5F3-E74743FA6AD0}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

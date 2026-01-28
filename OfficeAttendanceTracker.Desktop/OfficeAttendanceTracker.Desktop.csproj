@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -10,12 +10,6 @@
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
   </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\OfficeAttendanceTracker.Service\OfficeAttendanceTracker.Service.csproj">
-      <Private>true</Private>
-    </ProjectReference>
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
@@ -36,6 +30,10 @@
     <Content Remove="..\OfficeAttendanceTracker.Service\appsettings.Development.json" />
     <None Remove="..\OfficeAttendanceTracker.Service\appsettings.json" />
     <None Remove="..\OfficeAttendanceTracker.Service\appsettings.Development.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OfficeAttendanceTracker.Core\OfficeAttendanceTracker.Core.csproj" />
   </ItemGroup>
 
 </Project>

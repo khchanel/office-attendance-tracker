@@ -28,7 +28,7 @@ switch (extension)
 }
 
 // Add the Worker as a hosted service
-builder.Services.AddHostedService<Worker>();
+//builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();
 
