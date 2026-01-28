@@ -51,13 +51,31 @@ namespace OfficeAttendanceTracker.Desktop
             UpdateAttendanceCount();
         }
 
-        private Icon CreateIconWithNumber(int number)
+        /// <summary>
+        /// Maps compliance status to color (UI concern)
+        /// </summary>
+        private Color GetComplianceColor(ComplianceStatus status)
+        {
+            return status switch
+            {
+                ComplianceStatus.Compliant => Color.FromArgb(0, 120, 215),    // Blue
+                ComplianceStatus.Warning => Color.FromArgb(255, 140, 0),      // Orange
+                ComplianceStatus.Critical => Color.FromArgb(220, 20, 60),     // Red
+                _ => Color.Gray
+            };
+        }
+
+        /// <summary>
+        /// render an icon with the attendnace as text
+        /// </summary>
+        /// <param name="attendance">current month attendance</param>
+        /// <returns></returns>
+        private Icon CreateIconWithNumber(int attendance)
         {
             // bitmap size and font scale
             // 32x32 scale 1.0x | 1 digit font 24 | 2 digit font 20
             // 48x48 scale 1.5x | 1 digit font 36 | 2 digit font 30
             // 64x64 scale 2.0x | 1 digit font 48 | 2 digit font 40
-
             int iconSize = 48;
             using (Bitmap bitmap = new Bitmap(iconSize, iconSize))
             using (Graphics g = Graphics.FromImage(bitmap))
@@ -66,8 +84,11 @@ namespace OfficeAttendanceTracker.Desktop
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
 
-                // Draw background (circle)
-                using (SolidBrush bgBrush = new SolidBrush(Color.FromArgb(0, 120, 215))) // Blue background
+                // Get status from service (business logic), then map to color (UI concern)
+                var status = _attendanceService.GetComplianceStatus();
+                var backgroundColor = GetComplianceColor(status);
+
+                using (SolidBrush bgBrush = new SolidBrush(backgroundColor))
                 {
                     g.FillEllipse(bgBrush, 0, 0, iconSize - 1, iconSize - 1);
                 }
@@ -80,7 +101,7 @@ namespace OfficeAttendanceTracker.Desktop
                 }
 
                 // Draw the number
-                string text = number.ToString();
+                string text = attendance.ToString();
 
                 // Only need 1-digit (0-9) or 2-digit (10-31) - max is 31 days per month
                 int fontSize = text.Length == 1 ? 36 : 30;

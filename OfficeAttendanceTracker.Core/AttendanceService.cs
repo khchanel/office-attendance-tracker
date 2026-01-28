@@ -13,6 +13,7 @@ namespace OfficeAttendanceTracker.Service
         private readonly Guid _instanceId;
         private readonly INetworkInfoProvider _networkInfoProvider;
         private readonly IAttendanceRecordStore _attendanceRecordStore;
+        private readonly double _complianceThreshold;
 
 
         public AttendanceService(ILogger<AttendanceService> logger,
@@ -25,6 +26,7 @@ namespace OfficeAttendanceTracker.Service
             _networks = [];
             _networkInfoProvider = networkInfoProvider ?? new DefaultNetworkInfoProvider();
             _attendanceRecordStore = attendanceRecordStore;
+            _complianceThreshold = config.GetValue("ComplianceThreshold", 0.5); // Default 50%
 
             var networkConfig = config.GetSection("Networks").Get<List<string>>();
             if (networkConfig == null)
@@ -59,6 +61,39 @@ namespace OfficeAttendanceTracker.Service
         {
             var currentMonthRecords = _attendanceRecordStore.GetMonth(DateTime.Today);
             return currentMonthRecords.Count(r => r.IsOffice);
+        }
+
+        public int GetBusinessDaysInCurrentMonth()
+        {
+            var today = DateTime.Today;
+            var firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
+            var lastDayOfMonth = new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
+
+            int businessDays = 0;
+            for (var date = firstDayOfMonth; date <= lastDayOfMonth; date = date.AddDays(1))
+            {
+                if (date.DayOfWeek >= DayOfWeek.Monday && date.DayOfWeek <= DayOfWeek.Friday)
+                {
+                    businessDays++;
+                }
+            }
+
+            return businessDays;
+        }
+
+        public ComplianceStatus GetComplianceStatus()
+        {
+            var attendance = GetCurrentMonthAttendance();
+            var businessDays = GetBusinessDaysInCurrentMonth();
+            var requiredDays = (int)Math.Ceiling(businessDays * _complianceThreshold);
+            var warningThreshold = requiredDays - (int)(businessDays * 0.2);
+
+            if (attendance >= requiredDays)
+                return ComplianceStatus.Compliant;
+            else if (attendance >= warningThreshold)
+                return ComplianceStatus.Warning;
+            else
+                return ComplianceStatus.Critical;
         }
 
         public void TakeAttendance()
