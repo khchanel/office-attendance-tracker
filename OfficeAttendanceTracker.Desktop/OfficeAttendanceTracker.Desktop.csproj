@@ -7,8 +7,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWindowsForms>true</UseWindowsForms>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
-    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,15 +19,8 @@
     </None>
     <None Update="appsettings.Development.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Exclude Service project's appsettings from publish to avoid conflicts -->
-    <Content Remove="..\OfficeAttendanceTracker.Service\appsettings.json" />
-    <Content Remove="..\OfficeAttendanceTracker.Service\appsettings.Development.json" />
-    <None Remove="..\OfficeAttendanceTracker.Service\appsettings.json" />
-    <None Remove="..\OfficeAttendanceTracker.Service\appsettings.Development.json" />
   </ItemGroup>
 
   <ItemGroup>
