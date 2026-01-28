@@ -5,7 +5,7 @@ namespace OfficeAttendanceTracker.Test
     [TestClass]
     public abstract class AttendanceRecordStoreTestBase
     {
-        protected IAttendanceRecordStore _attendanceService;
+        protected IAttendanceRecordStore _attendanceService = null!;
 
         public abstract IAttendanceRecordStore CreateStore();
 
@@ -75,10 +75,15 @@ namespace OfficeAttendanceTracker.Test
 
 
             // Assert
-            Assert.AreSame<AttendanceRecord>(record, _attendanceService.GetToday());
-            Assert.IsTrue(_attendanceService.GetToday().IsOffice);
+            var todayRecord = _attendanceService.GetToday();
+            Assert.IsNotNull(todayRecord);
+            Assert.AreSame<AttendanceRecord>(record, todayRecord);
+            Assert.IsTrue(todayRecord.IsOffice);
             record.IsOffice = false;
-            Assert.IsFalse(_attendanceService.GetToday().IsOffice);
+
+            var updatedRecord = _attendanceService.GetToday();
+            Assert.IsNotNull(updatedRecord);
+            Assert.IsFalse(updatedRecord.IsOffice);
         }
 
 
