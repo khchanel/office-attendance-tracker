@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "OfficeAttendanceTracker.Desktop": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
