@@ -3,57 +3,113 @@
 [![build](https://github.com/khchanel/office-attendance-tracker/actions/workflows/dotnet.yml/badge.svg)](https://github.com/khchanel/office-attendance-tracker/actions/workflows/dotnet.yml)
 [![build](https://github.com/khchanel/office-attendance-tracker/actions/workflows/go-attendance.yml/badge.svg)](https://github.com/khchanel/office-attendance-tracker/actions/workflows/go-attendance.yml)
 
-This is a daemon service which runs on your computer in the background to keep track of your attendance
+A background application that tracks your office attendance by monitoring network connectivity.
+Detects when you're connected to configured office networks and logs attendance records.
+Currently support file-based storage in CSV or JSON format.
 
-Current implementation relies on checking whether OS network interfaces are in office subnet addresses that are defined in appsettings
+## Deployment Options
 
+Two deployment modes are available:
 
-# Build and Run Instructions
+1. **Windows Service** (`OfficeAttendanceTracker.Service`) - Runs as a background service with no UI
+2. **Desktop App** (`OfficeAttendanceTracker.Desktop`) - System tray application with visual feedback
 
 ## Prerequisites
-* .NET 8 SDK installed
-* Windows OS (for Windows Service deployment)
-* Administrator privileges (for service installation)
+* .NET 8 SDK
+* Windows OS
+* Administrator privileges (for Windows Service installation)
+
 ---
 
-## Build and publish release binary
+## Build
+
+Build all projects:
 ```
 dotnet build
-dotnet publish OfficeAttendanceTracker.Service/OfficeAttendanceTracker.Service.csproj -c Release -o ./publish
 ```
 
-## Configure the Service
-Edit appsettings.json to configure settings as needed
-
-'Networks' should be set to your office network address which is used to detect office presence
-
-example:
+Publish a specific project:
 ```
+dotnet publish OfficeAttendanceTracker.Service -c Release -o ./publish/service
+dotnet publish OfficeAttendanceTracker.Desktop -c Release -o ./publish/desktop
+```
+
+---
+
+## Configuration
+
+Edit `appsettings.json` in the respective project directory:
+
+```json
+{
   "Networks": ["10.8.1.0/24", "10.1.0.0/16"],
   "PollIntervalMs": 1800000,
-  "DataFilePath":  "D:\\attendance",
-  "DataFileName" :  "attendance.csv"
+  "DataFilePath": null,
+  "DataFileName": "attendance.csv"
+}
 ```
 
-## Run as Console App
+**Configuration Options:**
+- `Networks`: Office network CIDR ranges used to detect office presence (observe your computer network IP while in office network)
+- `PollIntervalMs`: Network check interval in milliseconds (default: 30 minutes)
+- `DataFilePath`: Storage path for attendance data (null = application directory) e.g. "D:\\attendance"
+- `DataFileName`: Name of attendance file (supports .csv or .json)
+
+---
+
+## Running the Application
+
+### Option 1: Windows Service (Background)
+
+**Install:**
 ```
-dotnet run --project OfficeAttendanceTracker.Service
+sc create "OfficeAttendanceTracker" binPath= "C:\path\to\publish\service\OfficeAttendanceTracker.Service.exe"
 ```
 
-## Install the Windows Service
-
-```
-sc create "OfficeAttendanceTracker" binPath= "D:\src\office-attendance-tracker\publish\OfficeAttendanceTracker.Service.exe"
-```
-
-## Start windows service
+**Start:**
 ```
 sc start "OfficeAttendanceTracker"
 ```
 
-
-## Uninstall Windows Service (if needed)
+**Stop:**
 ```
 sc stop "OfficeAttendanceTracker"
+```
+
+**Uninstall:**
+```
 sc delete "OfficeAttendanceTracker"
+```
+
+### Option 2: Desktop System Tray App
+
+Run the executable:
+```
+.\publish\desktop\OfficeAttendanceTracker.Desktop.exe
+```
+
+Or during development:
+```
+dotnet run --project OfficeAttendanceTracker.Desktop
+```
+
+The app will start in the system tray showing current month's attendance count.
+
+#### Desktop UI
+
+The system tray app automatically track attendance and provides intuitive visual feedback for your office attendance:
+
+![System Tray Icon](./docs/screenshots/Screenshot-1.png)
+
+![Context Menu](./docs/screenshots/Screenshot-2.png)
+
+![Tooltip with Count](./docs/screenshots/Screenshot-3.png)
+
+---
+
+## Development
+
+Run as console app for testing:
+```
+dotnet run --project OfficeAttendanceTracker.Service
 ```
