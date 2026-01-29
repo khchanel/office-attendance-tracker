@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.NetworkInformation;
 
-namespace OfficeAttendanceTracker.Service
+namespace OfficeAttendanceTracker.Core
 {
 
     public class AttendanceService : IAttendanceService

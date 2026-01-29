@@ -1,6 +1,8 @@
 ﻿
 
-namespace OfficeAttendanceTracker.Service
+
+
+namespace OfficeAttendanceTracker.Core
 {
     public interface IAttendanceRecordStore
     {

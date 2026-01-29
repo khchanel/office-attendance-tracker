@@ -1,6 +1,6 @@
 using CsvHelper.Configuration;
 
-namespace OfficeAttendanceTracker.Service
+namespace OfficeAttendanceTracker.Core
 {
     public class AttendanceRecordMap : ClassMap<AttendanceRecord>
     {

@@ -1,7 +1,14 @@
-using OfficeAttendanceTracker.Service;
+using OfficeAttendanceTracker.Core;
 
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<Worker>();
+
+// Conditionally add Worker based on configuration
+var enableBackgroundWorker = builder.Configuration.GetValue("EnableBackgroundWorker", true);
+if (enableBackgroundWorker)
+{
+    builder.Services.AddHostedService<Worker>();
+}
+
 builder.Services.AddWindowsService(options =>
 {
     options.ServiceName = "Office Attendance Tracker";
@@ -29,5 +36,6 @@ switch (extension)
 
 var host = builder.Build();
 host.Run();
+
 
 

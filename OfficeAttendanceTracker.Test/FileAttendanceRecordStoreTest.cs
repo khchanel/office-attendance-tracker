@@ -1,4 +1,4 @@
-using OfficeAttendanceTracker.Service;
+using OfficeAttendanceTracker.Core;
 
 namespace OfficeAttendanceTracker.Test
 {

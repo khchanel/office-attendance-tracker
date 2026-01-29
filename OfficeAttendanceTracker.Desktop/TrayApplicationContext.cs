@@ -3,7 +3,7 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using OfficeAttendanceTracker.Service;
+using OfficeAttendanceTracker.Core;
 
 namespace OfficeAttendanceTracker.Desktop
 {

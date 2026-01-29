@@ -4,7 +4,7 @@ using CsvHelper.Configuration;
 using Microsoft.Extensions.Configuration;
 
 
-namespace OfficeAttendanceTracker.Service
+namespace OfficeAttendanceTracker.Core
 {
     public class AttendanceRecordCsvFileStore : IAttendanceRecordStore
     {

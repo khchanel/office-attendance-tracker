@@ -1,7 +1,7 @@
 ﻿using System.Net;
 using System.Net.NetworkInformation;
 
-namespace OfficeAttendanceTracker.Service
+namespace OfficeAttendanceTracker.Core
 {
     public interface INetworkInfoProvider
     {

@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace OfficeAttendanceTracker.Service
+namespace OfficeAttendanceTracker.Core
 {
     public class DateTimeConverter : JsonConverter<DateTime>
     {

@@ -1,4 +1,4 @@
-namespace OfficeAttendanceTracker.Service
+namespace OfficeAttendanceTracker.Core
 {
     public enum ComplianceStatus
     {

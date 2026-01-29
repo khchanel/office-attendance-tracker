@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace OfficeAttendanceTracker.Service
+namespace OfficeAttendanceTracker.Core
 {
     public record AttendanceRecord
     {

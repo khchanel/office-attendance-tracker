@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using OfficeAttendanceTracker.Service;
+using OfficeAttendanceTracker.Core;
 using OfficeAttendanceTracker.Desktop;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -27,8 +27,12 @@ switch (extension)
         break;
 }
 
-// Add the Worker as a hosted service
-//builder.Services.AddHostedService<Worker>();
+// Conditionally add Worker based on configuration
+var enableBackgroundWorker = builder.Configuration.GetValue("EnableBackgroundWorker", true);
+if (enableBackgroundWorker)
+{
+    builder.Services.AddHostedService<Worker>();
+}
 
 var host = builder.Build();
 

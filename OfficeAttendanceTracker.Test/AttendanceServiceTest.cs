@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Moq;
-using OfficeAttendanceTracker.Service;
+using OfficeAttendanceTracker.Core;
 using System.Net;
 using System.Net.NetworkInformation;
 
