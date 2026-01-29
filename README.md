@@ -1,9 +1,11 @@
 # Office Attendance Tracker
 
+[![Github Release](https://img.shields.io/github/v/release/khchanel/office-attendance-tracker?style=flat)](https://github.com/khchanel/office-attendance-tracker/releases)
 [![build](https://github.com/khchanel/office-attendance-tracker/actions/workflows/dotnet.yml/badge.svg)](https://github.com/khchanel/office-attendance-tracker/actions/workflows/dotnet.yml)
 [![build](https://github.com/khchanel/office-attendance-tracker/actions/workflows/go-attendance.yml/badge.svg)](https://github.com/khchanel/office-attendance-tracker/actions/workflows/go-attendance.yml)
+[![build](https://github.com/khchanel/office-attendance-tracker/actions/workflows/json2csv.yml/badge.svg)](https://github.com/khchanel/office-attendance-tracker/actions/workflows/json2csv.yml)
 
-Automatically detect and tracks your office attendance and monitor compliance status using Windows tray app or background service.
+Automatically detect and track your office attendance using Windows system tray app or background service.
 
 ## Features
 - Automatic detection of office presence based on configured network CIDR ranges
