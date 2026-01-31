@@ -22,16 +22,59 @@ namespace OfficeAttendanceTracker.Core
             }
             else
             {
+                Records = [];
                 Save();
             }
         }
 
         protected override void Save()
         {
-            string json = JsonSerializer.Serialize(Records, new JsonSerializerOptions { WriteIndented = true });
-
-            Directory.CreateDirectory(Path.GetDirectoryName(_dataFilePath)!);
-            File.WriteAllText(_dataFilePath, json);
+            var directory = Path.GetDirectoryName(_dataFilePath)!;
+            Directory.CreateDirectory(directory);
+            
+            // Use atomic write pattern: write to temp file, then replace
+            // This prevents data loss if app crashes during write
+            var tempFilePath = Path.Combine(directory, $"{Path.GetFileName(_dataFilePath)}.tmp");
+            var backupFilePath = Path.Combine(directory, $"{Path.GetFileName(_dataFilePath)}.bak");
+            
+            try
+            {
+                // Serialize and write to temporary file first
+                string json = JsonSerializer.Serialize(Records, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(tempFilePath, json);
+                
+                // If original file exists, back it up
+                if (File.Exists(_dataFilePath))
+                {
+                    File.Copy(_dataFilePath, backupFilePath, true);
+                }
+                
+                // Atomic replace: move temp file to target
+                File.Move(tempFilePath, _dataFilePath, true);
+                
+                // Clean up backup after successful write
+                if (File.Exists(backupFilePath))
+                {
+                    File.Delete(backupFilePath);
+                }
+            }
+            catch
+            {
+                // If write failed, restore from backup if available
+                if (File.Exists(backupFilePath) && !File.Exists(_dataFilePath))
+                {
+                    File.Move(backupFilePath, _dataFilePath, true);
+                }
+                throw;
+            }
+            finally
+            {
+                // Clean up temp file if it still exists
+                if (File.Exists(tempFilePath))
+                {
+                    try { File.Delete(tempFilePath); } catch { }
+                }
+            }
         }
     }
 }

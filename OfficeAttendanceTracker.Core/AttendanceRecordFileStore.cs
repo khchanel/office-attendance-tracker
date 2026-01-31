@@ -5,7 +5,7 @@ namespace OfficeAttendanceTracker.Core
     /// <summary>
     /// Abstract base class for file-based attendance record storage.
     /// Implements common logic while allowing subclasses to define format-specific Load/Save behavior.
-    /// Uses explicit initialization and auto-save pattern for optimal performance.
+    /// Uses explicit initialization and auto-save pattern.
     /// </summary>
     public abstract class AttendanceRecordFileStore : IAttendanceRecordStore
     {

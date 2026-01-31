@@ -130,7 +130,12 @@ namespace OfficeAttendanceTracker.Desktop
         {
             try
             {
+                // Reload from disk to get latest persisted data
                 _attendanceService.Reload();
+                
+                // Immediately take attendance (don't wait for Worker's next cycle)
+                _attendanceService.TakeAttendance();
+                
                 var count = _attendanceService.GetCurrentMonthAttendance();
                 var currentMonth = DateTime.Today.ToString("MMMM yyyy");
 

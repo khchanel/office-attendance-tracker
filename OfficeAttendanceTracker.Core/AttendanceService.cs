@@ -136,6 +136,7 @@ namespace OfficeAttendanceTracker.Core
                 return ComplianceStatus.Critical;
         }
 
+
         public void TakeAttendance()
         {
             var attendance = _attendanceRecordStore.GetToday();
@@ -160,6 +161,10 @@ namespace OfficeAttendanceTracker.Core
             {
                 _logger.LogInformation("Not detected in office now");
             }
+            
+            // Automatically save changes to persist immediately
+            // This ensures data is saved right after taking attendance
+            _attendanceRecordStore.SaveChanges();
         }
 
 
@@ -219,7 +224,6 @@ namespace OfficeAttendanceTracker.Core
 
             return false;
         }
-
 
     }
 }
