@@ -29,11 +29,11 @@ namespace OfficeAttendanceTracker.Core
                 using var reader = new StreamReader(_dataFilePath);
                 using var csv = new CsvReader(reader, _config);
                 csv.Context.RegisterClassMap<AttendanceRecordMap>();
-                _attendanceRecords = csv.GetRecords<AttendanceRecord>().ToList();
+                Records = csv.GetRecords<AttendanceRecord>().ToList();
             }
             else
             {
-                _attendanceRecords = [];
+                Records = [];
                 Save();
             }
         }
@@ -44,7 +44,7 @@ namespace OfficeAttendanceTracker.Core
             using var writer = new StreamWriter(_dataFilePath, false); // overwrite
             using var csv = new CsvWriter(writer, _config);
             csv.Context.RegisterClassMap<AttendanceRecordMap>();
-            csv.WriteRecords(_attendanceRecords);
+            csv.WriteRecords(Records);
         }
     }
 }

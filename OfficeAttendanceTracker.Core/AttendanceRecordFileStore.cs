@@ -4,11 +4,31 @@ namespace OfficeAttendanceTracker.Core
 {
     /// <summary>
     /// Abstract base class for file-based attendance record storage.
+    /// Implements common logic while allowing subclasses to define format-specific Load/Save behavior.
+    /// Uses explicit initialization and auto-save pattern for optimal performance.
     /// </summary>
     public abstract class AttendanceRecordFileStore : IAttendanceRecordStore
     {
+
+        protected List<AttendanceRecord> Records
+        {
+            get {
+                if (!_isInitialized)
+                    throw new InvalidOperationException("Store not initialized. Call Initialize() before using the store.");
+
+                return _attendanceRecords;
+            }
+            set {
+                _attendanceRecords = value;
+            }
+        }
+
         protected readonly string _dataFilePath;
-        protected List<AttendanceRecord> _attendanceRecords;
+        private List<AttendanceRecord> _attendanceRecords;
+        private bool _isDirty;
+        private bool _isInitialized;
+        private Timer? _autoSaveTimer;
+        private readonly object _lock = new object();
 
         protected AttendanceRecordFileStore(IConfiguration? config, string defaultFileName)
         {
@@ -21,57 +41,102 @@ namespace OfficeAttendanceTracker.Core
             filepath ??= AppDomain.CurrentDomain.BaseDirectory;
             _dataFilePath = Path.Combine(filepath, filename);
             _attendanceRecords = [];
-            Load();
+
         }
+
+        public void Initialize()
+        {
+            lock (_lock)
+            {
+                if (_isInitialized)
+                    return;
+
+                Load();
+                _isInitialized = true;
+
+                // Start auto-save timer - saves every minute if dirty
+                var autoSaveInterval = TimeSpan.FromMinutes(1);
+                _autoSaveTimer = new Timer(_ =>
+                {
+                    if (_isDirty)
+                        SaveChanges();
+                }, null, autoSaveInterval, autoSaveInterval);
+            }
+        }
+
 
         public AttendanceRecord Add(bool isOffice, DateTime date)
         {
-            var record = new AttendanceRecord
+
+            lock (_lock)
             {
-                Date = date.Date, // time part is truncated
-                IsOffice = isOffice
-            };
+                var record = new AttendanceRecord
+                {
+                    Date = date.Date, // time part is truncated
+                    IsOffice = isOffice
+                };
 
-            _attendanceRecords.Add(record);
-            Save();
+                Records.Add(record);
+                _isDirty = true;
 
-            return record;
+                return record;
+            }
         }
 
         public void Update(bool isOffice, DateTime date)
         {
-            var record = GetDate(date);
 
-            if (record != null && record.IsOffice != isOffice)
+            lock (_lock)
             {
-                record.IsOffice = isOffice;
-                Save();
+                var record = GetDate(date);
+
+                if (record != null && record.IsOffice != isOffice)
+                {
+                    record.IsOffice = isOffice;
+                    _isDirty = true;
+                }
             }
         }
 
         public List<AttendanceRecord> GetAll(DateTime startDate, DateTime endDate)
         {
-            return _attendanceRecords
-                .FindAll(record => record.Date >= startDate.Date && record.Date <= endDate.Date);
+
+            lock (_lock)
+            {
+                return Records
+                    .FindAll(record => record.Date >= startDate.Date && record.Date <= endDate.Date);
+            }
         }
 
         public List<AttendanceRecord> GetAll()
         {
-            return _attendanceRecords;
+
+            lock (_lock)
+            {
+                return Records.ToList();
+            }
         }
 
         public List<AttendanceRecord> GetMonth(DateTime? month = null)
         {
+
             if (month == null) month = DateTime.Today.Date;
 
-            return _attendanceRecords.FindAll(record => 
-                record.Date.Year == month.Value.Year && record.Date.Month == month.Value.Month);
+            lock (_lock)
+            {
+                return Records.FindAll(record => 
+                    record.Date.Year == month.Value.Year && record.Date.Month == month.Value.Month);
+            }
         }
 
         public AttendanceRecord? GetDate(DateTime date)
         {
-            var record = _attendanceRecords.Find(r => r.Date == date.Date);
-            return record;
+
+            lock (_lock)
+            {
+                var record = Records.Find(r => r.Date == date.Date);
+                return record;
+            }
         }
 
         public AttendanceRecord? GetToday()
@@ -81,18 +146,74 @@ namespace OfficeAttendanceTracker.Core
 
         public void Clear()
         {
-            _attendanceRecords = [];
-            Save();
+
+            lock (_lock)
+            {
+                Records = [];
+                _isDirty = true;
+                SaveChanges();
+            }
+        }
+
+        public void Reload()
+        {
+
+            lock (_lock)
+            {
+                Load();
+                _isDirty = false;
+            }
+        }
+
+        public void SaveChanges()
+        {
+
+            lock (_lock)
+            {
+                if (_isDirty)
+                {
+                    Save();
+                    _isDirty = false;
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (_lock)
+            {
+                _autoSaveTimer?.Dispose();
+                
+                // Final save on disposal if dirty
+                if (_isDirty && _isInitialized)
+                {
+                    try
+                    {
+                        Save();
+                        _isDirty = false;
+                    }
+                    catch
+                    {
+                        // Suppress exceptions during disposal
+                        // but could log them if logging is available
+                    }
+                }
+            }
+
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>
         /// Load attendance records from file. Must be implemented by subclasses.
+        /// Called by Initialize() and Reload().
         /// </summary>
         public abstract void Load();
 
         /// <summary>
         /// Save attendance records to file. Must be implemented by subclasses.
+        /// Called by SaveChanges() when data is dirty.
         /// </summary>
         protected abstract void Save();
     }
 }
+

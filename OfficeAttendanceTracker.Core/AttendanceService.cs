@@ -57,7 +57,7 @@ namespace OfficeAttendanceTracker.Core
 
         public void Reload()
         {
-            _attendanceRecordStore.Load();
+            _attendanceRecordStore.Reload();
         }
 
         public int GetCurrentMonthAttendance()

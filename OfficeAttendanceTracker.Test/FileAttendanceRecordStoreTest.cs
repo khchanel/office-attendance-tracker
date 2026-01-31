@@ -27,7 +27,14 @@ namespace OfficeAttendanceTracker.Test
         public void Setup()
         {
             _attendanceService = CreateStore();
+            _attendanceService.Initialize(); // Initialize the store before use
             _attendanceService.Clear();
+        }
+
+        [TestCleanup]
+        public void Cleanup()
+        {
+            _attendanceService?.Dispose(); // Properly dispose of the store
         }
 
 

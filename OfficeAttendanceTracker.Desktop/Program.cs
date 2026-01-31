@@ -14,19 +14,23 @@ builder.Services.AddSingleton<IAttendanceService, AttendanceService>();
 var dataFileName = builder.Configuration["DataFileName"] ?? "attendance.csv";
 var extension = Path.GetExtension(dataFileName).ToLowerInvariant();
 
-switch (extension)
+// Register store with explicit initialization
+builder.Services.AddSingleton<IAttendanceRecordStore>(provider =>
 {
-    case ".csv":
-        builder.Services.AddSingleton<IAttendanceRecordStore, AttendanceRecordCsvFileStore>();
-        break;
-    case ".json":
-        builder.Services.AddSingleton<IAttendanceRecordStore, AttendanceRecordJsonFileStore>();
-        break;
-    default:
-        Console.Error.WriteLine($"Unsupported file extension '{extension}' in DataFileName. Supported: .csv, .json");
-        Environment.Exit(1);
-        break;
-}
+    var config = provider.GetRequiredService<IConfiguration>();
+    
+    IAttendanceRecordStore store = extension switch
+    {
+        ".csv" => new AttendanceRecordCsvFileStore(config),
+        ".json" => new AttendanceRecordJsonFileStore(config),
+        _ => throw new NotSupportedException($"Unsupported file extension '{extension}'. Supported: .csv, .json")
+    };
+    
+    // Explicit initialization - load data and start auto-save timer
+    store.Initialize();
+    
+    return store;
+});
 
 // Conditionally add Worker based on configuration
 var enableBackgroundWorker = builder.Configuration.GetValue("EnableBackgroundWorker", true);
