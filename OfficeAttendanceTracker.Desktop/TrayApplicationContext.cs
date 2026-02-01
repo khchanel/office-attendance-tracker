@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
@@ -88,6 +88,21 @@ namespace OfficeAttendanceTracker.Desktop
         }
 
         /// <summary>
+        /// Formats compliance status as user-friendly text
+        /// </summary>
+        private static string GetComplianceStatusText(ComplianceStatus status)
+        {
+            return status switch
+            {
+                ComplianceStatus.Secured => "[Secured] - Target met",
+                ComplianceStatus.Compliant => "[Compliant] - On track",
+                ComplianceStatus.Warning => "[Warning] - Below target",
+                ComplianceStatus.Critical => "[Critical] - Cannot meet target",
+                _ => "Unknown"
+            };
+        }
+
+        /// <summary>
         /// render an icon with the attendnace as text
         /// </summary>
         /// <param name="attendance">current month attendance</param>
@@ -145,7 +160,7 @@ namespace OfficeAttendanceTracker.Desktop
             }
         }
 
-        private bool UpdateAttendanceCount()
+        private void UpdateAttendanceCount(bool showBalloonTip = false)
         {
             try
             {
@@ -168,24 +183,29 @@ namespace OfficeAttendanceTracker.Desktop
                     oldIcon.Dispose();
                 }
 
-                _trayIcon.Text = $"Office Days for {currentMonth} is: {count} days";
-                _trayIcon.BalloonTipText = $"Current month office attendance: {count} days";
+                // Build status messages in order: count → in office status → compliance status
+                var complianceStatus = _attendanceService.GetComplianceStatus();
+                var complianceText = GetComplianceStatusText(complianceStatus);
+                var officeStatusText = isInOffice ? "[YES] Currently in office" : "[NO] Not in office";
                 
-                return isInOffice;
+                var message = $"Office Days for {currentMonth}: {count} days\n{officeStatusText}\n{complianceText}";
+                _trayIcon.Text = message;
+                
+                if (showBalloonTip)
+                {
+                    _trayIcon.ShowBalloonTip(3000, AppName, message, ToolTipIcon.Info);
+                }
             }
             catch (Exception ex)
             {
                 _trayIcon.Text = $"Error: {ex.Message}";
                 _trayIcon.Icon = SystemIcons.Error;
-                return false;
             }
         }
 
         private void OnRefresh(object? sender, EventArgs e)
         {
-            var isInOffice = UpdateAttendanceCount();
-            var officeStatus = isInOffice ? "Detected currently in office" : "Not detected in office";
-            _trayIcon.ShowBalloonTip(3000, AppName, $"{officeStatus}\n{_trayIcon.Text}", ToolTipIcon.Info);
+            UpdateAttendanceCount(showBalloonTip: true);
         }
 
         private void OnSettings(object? sender, EventArgs e)
