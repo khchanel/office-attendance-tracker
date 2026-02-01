@@ -183,7 +183,7 @@ namespace OfficeAttendanceTracker.Desktop
                 Width = 250,
                 PlaceholderText = "Leave empty for default"
             };
-            toolTip.SetToolTip(_dataFilePathTextBox, "Custom path for attendance data file.\nLeave empty to use application directory\n\n* Requires application restart");
+            toolTip.SetToolTip(_dataFilePathTextBox, "Custom path for attendance data file.\nLeave empty to use user profile directory (%USERPROFILE%)\n\n* Requires application restart");
             _browseButton = new Button
             {
                 Text = "Browse...",

@@ -20,7 +20,7 @@ namespace OfficeAttendanceTracker.Desktop
         public double ComplianceThreshold { get; set; } = 0.5; // 50%
 
         [JsonPropertyName("dataFilePath")]
-        public string? DataFilePath { get; set; } = null;
+        public string? DataFilePath { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
         [JsonPropertyName("dataFileName")]
         public string DataFileName { get; set; } = "attendance.csv";
@@ -42,3 +42,4 @@ namespace OfficeAttendanceTracker.Desktop
         }
     }
 }
+

@@ -59,10 +59,11 @@ Access settings from the system tray menu:
    - **Poll Interval**: How often to check network status (in seconds)
    - **Enable Background Worker**: Enable automatic background monitoring
    - **Compliance Threshold**: Percentage threshold for attendance compliance
-   - **Data File Path**: Where to store attendance data (leave empty for app directory)
+   - **Data File Path**: Where to store attendance data (default: user profile directory)
    - **Data File Name**: Name of the attendance file (supports .csv or .json)
 
 **Settings file location:** `user-settings.json` in the application directory  
+**Data file default location:** `%USERPROFILE%\attendance.csv` (user profile directory)  
 **Note:** Changes to networks, data path/filename, and background worker require an application restart.
 
 ### Windows Service - Configuration File
@@ -185,6 +186,12 @@ A: Attendance is tracked per day. If you're detected on an office network at any
 
 **Q: Can I export my attendance data?**  
 A: Yes! The attendance data is stored in CSV or JSON format (your choice) and can be easily opened in Excel or any data analysis tool.
+
+**Q: Where is my attendance data stored?**  
+A: 
+- **Desktop App**: By default at `%USERPROFILE%\attendance.csv` (e.g., `C:\Users\YourName\attendance.csv`)
+- **Windows Service**: By default in the application directory where the service is installed
+- Both can be customized via settings/configuration
 
 **Q: What's the difference between Desktop and Service deployments?**  
 A: Desktop provides a system tray icon with visual feedback and easy settings access. Service runs invisibly in the background. Both track attendance identically.
