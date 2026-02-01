@@ -103,7 +103,6 @@ namespace OfficeAttendanceTracker.Core
 
         public ComplianceStatus GetComplianceStatus()
         {
-            const double margin = 0.2; // 20% margin
             var attendance = GetCurrentMonthAttendance();
             
             // Rolling: business days up to today (for current compliance target)
@@ -112,28 +111,32 @@ namespace OfficeAttendanceTracker.Core
             // Total: entire month's business days (for AbsolutelyFine status)
             var totalBusinessDaysInMonth = GetBusinessDaysInCurrentMonth();
             
+            // Remaining business days from tomorrow onwards
+            var remainingBusinessDays = totalBusinessDaysInMonth - businessDaysUpToToday;
+            
             // Required for entire month - AbsolutelyFine threshold
             var requiredForEntireMonth = (int)Math.Ceiling(totalBusinessDaysInMonth * _complianceThreshold);
             
             // Required for rolling (up to today) - Compliant threshold
             var requiredForRolling = (int)Math.Ceiling(businessDaysUpToToday * _complianceThreshold);
-            var warningThreshold = requiredForRolling - (int)(businessDaysUpToToday * margin);
+            
+            // Maximum possible attendance if all remaining days are attended
+            var maxPossibleAttendance = attendance + remainingBusinessDays;
 
             // AbsolutelyFine: Already met entire month's requirement
             if (attendance >= requiredForEntireMonth)
                 return ComplianceStatus.AbsolutelyFine;
             
             // Compliant: Meeting rolling requirement (up to today)
-            else if (attendance >= requiredForRolling)
+            if (attendance >= requiredForRolling)
                 return ComplianceStatus.Compliant;
             
-            // Warning: Close to rolling requirement but below it
-            else if (attendance >= warningThreshold)
-                return ComplianceStatus.Warning;
-            
-            // Critical: Far below rolling requirement
-            else
+            // Critical: Impossible to meet target even with perfect attendance for remainder
+            if (maxPossibleAttendance < requiredForEntireMonth)
                 return ComplianceStatus.Critical;
+            
+            // Warning: Below rolling threshold but still achievable
+            return ComplianceStatus.Warning;
         }
 
 

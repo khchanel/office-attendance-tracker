@@ -259,8 +259,8 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            // At end of month with 11 days (need 12 for entire month), should be Warning
-            Assert.AreEqual(ComplianceStatus.Warning, status);
+            // At end of month with 11 days (need 12 for entire month), impossible to achieve - should be Critical
+            Assert.AreEqual(ComplianceStatus.Critical, status);
         }
 
         [TestMethod]
@@ -294,18 +294,15 @@ namespace OfficeAttendanceTracker.Test
         [TestMethod]
         public void GetComplianceStatus_ReturnsCritical_WhenAttendanceBelowWarningThreshold()
         {
-            // Arrange: Attendance below warningThreshold (based on rolling days)
-            var config = BuildConfig(new Dictionary<string, string>
-            {
-                {"ComplianceThreshold", "0.5"}
-            });
+            // Arrange: Set date early in month and very low attendance - impossible to meet target
+            SetMockDate(new DateTime(2025, 1, 31)); // Last day of month
             
-            var tempService = CreateService(config);
-            var businessDaysUpToToday = tempService.GetBusinessDaysUpToToday();
-            var requiredForRolling = (int)Math.Ceiling(businessDaysUpToToday * 0.5);
-            var marginDays = (int)(businessDaysUpToToday * 0.2);
-            var warningThreshold = requiredForRolling - marginDays;
-            var attendanceDays = Math.Max(0, warningThreshold - 2); // Well below warning
+            var tempService = CreateService();
+            var totalBusinessDays = tempService.GetBusinessDaysInCurrentMonth();
+            var requiredForEntireMonth = (int)Math.Ceiling(totalBusinessDays * 0.5);
+            
+            // Set attendance to half of required - impossible to meet target on last day
+            var attendanceDays = requiredForEntireMonth / 2;
 
             var service = CreateServiceWithAttendanceRecords(attendanceDays, new Dictionary<string, string>
             {
@@ -315,7 +312,7 @@ namespace OfficeAttendanceTracker.Test
             // Act
             var status = service.GetComplianceStatus();
 
-            // Assert
+            // Assert - Impossible to meet target with remaining days
             Assert.AreEqual(ComplianceStatus.Critical, status);
         }
 
@@ -399,7 +396,8 @@ namespace OfficeAttendanceTracker.Test
         [TestMethod]
         public void GetComplianceStatus_HandleZeroAttendance()
         {
-            // Arrange: No attendance records
+            // Arrange: No attendance records early in month (still achievable)
+            SetMockDate(new DateTime(2025, 1, 15)); // Mid-month
             _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns(new List<AttendanceRecord>());
             
             var service = CreateService(BuildConfig(new Dictionary<string, string>
@@ -410,8 +408,8 @@ namespace OfficeAttendanceTracker.Test
             // Act
             var status = service.GetComplianceStatus();
 
-            // Assert
-            Assert.AreEqual(ComplianceStatus.Critical, status);
+            // Assert - Mid-month with no attendance should be Warning (still achievable)
+            Assert.AreEqual(ComplianceStatus.Warning, status);
         }
 
         #endregion

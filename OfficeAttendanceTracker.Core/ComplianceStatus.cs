@@ -16,12 +16,12 @@ namespace OfficeAttendanceTracker.Core
         Compliant,
         
         /// <summary>
-        /// Close to but below the rolling requirement
+        /// Below rolling threshold but still achievable given remaining business days
         /// </summary>
         Warning,
         
         /// <summary>
-        /// Far below the rolling requirement
+        /// Impossible to meet compliance target for remainder of the month
         /// </summary>
         Critical
     }
