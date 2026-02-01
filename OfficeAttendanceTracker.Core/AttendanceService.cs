@@ -43,7 +43,7 @@ namespace OfficeAttendanceTracker.Core
 
         }
 
-        public bool CheckAttendance()
+        private bool CheckAttendance()
         {
             _logger.LogInformation("instance id: {Instance}", _instanceId);
 
@@ -123,7 +123,7 @@ namespace OfficeAttendanceTracker.Core
         }
 
 
-        public void TakeAttendance()
+        public bool TakeAttendance()
         {
             var attendance = _attendanceRecordStore.GetToday();
             if (attendance == null)
@@ -151,6 +151,8 @@ namespace OfficeAttendanceTracker.Core
             // Automatically save changes to persist immediately
             // This ensures data is saved right after taking attendance
             _attendanceRecordStore.SaveChanges();
+            
+            return isAtOfficeNow;
         }
 
 

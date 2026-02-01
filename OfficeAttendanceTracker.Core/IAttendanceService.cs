@@ -2,9 +2,8 @@
 {
     public interface IAttendanceService
     {
-        bool CheckAttendance();
         int GetCurrentMonthAttendance();
-        void TakeAttendance();
+        bool TakeAttendance();
         void Reload();
         
         /// <summary>

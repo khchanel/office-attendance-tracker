@@ -145,7 +145,7 @@ namespace OfficeAttendanceTracker.Desktop
             }
         }
 
-        private void UpdateAttendanceCount()
+        private bool UpdateAttendanceCount()
         {
             try
             {
@@ -153,7 +153,7 @@ namespace OfficeAttendanceTracker.Desktop
                 _attendanceService.Reload();
                 
                 // Immediately take attendance (don't wait for Worker's next cycle)
-                _attendanceService.TakeAttendance();
+                var isInOffice = _attendanceService.TakeAttendance();
                 
                 var count = _attendanceService.GetCurrentMonthAttendance();
                 var currentMonth = DateTime.Today.ToString("MMMM yyyy");
@@ -170,18 +170,22 @@ namespace OfficeAttendanceTracker.Desktop
 
                 _trayIcon.Text = $"Office Days for {currentMonth} is: {count} days";
                 _trayIcon.BalloonTipText = $"Current month office attendance: {count} days";
+                
+                return isInOffice;
             }
             catch (Exception ex)
             {
                 _trayIcon.Text = $"Error: {ex.Message}";
                 _trayIcon.Icon = SystemIcons.Error;
+                return false;
             }
         }
 
         private void OnRefresh(object? sender, EventArgs e)
         {
-            UpdateAttendanceCount();
-            _trayIcon.ShowBalloonTip(2000, AppName, $"Refreshed: {_trayIcon.Text}", ToolTipIcon.Info);
+            var isInOffice = UpdateAttendanceCount();
+            var officeStatus = isInOffice ? "Detected currently in office" : "Not detected in office";
+            _trayIcon.ShowBalloonTip(3000, AppName, $"{officeStatus}\n{_trayIcon.Text}", ToolTipIcon.Info);
         }
 
         private void OnSettings(object? sender, EventArgs e)

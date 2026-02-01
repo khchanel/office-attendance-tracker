@@ -92,28 +92,28 @@ namespace OfficeAttendanceTracker.Test
 
         #endregion
 
-        #region CheckAttendance Tests
+        #region TakeAttendance Tests
 
         [TestMethod]
-        public void CheckAttendance_ReturnsTrue_WhenHostIpInNetwork()
+        public void TakeAttendance_ReturnsTrue_WhenHostIpInNetwork()
         {
             _networkProviderMock.Setup(p => p.GetHostName()).Returns("testhost");
             _networkProviderMock.Setup(p => p.GetHostAddresses(It.IsAny<string>())).Returns(new[] { IPAddress.Parse("192.168.1.10") });
             _networkProviderMock.Setup(p => p.GetAllNetworkInterfaces()).Returns(new List<NetworkInterface>());
 
             var service = CreateService();
-            Assert.IsTrue(service.CheckAttendance());
+            Assert.IsTrue(service.TakeAttendance());
         }
 
         [TestMethod]
-        public void CheckAttendance_ReturnsFalse_WhenNoIpInNetwork()
+        public void TakeAttendance_ReturnsFalse_WhenNoIpInNetwork()
         {
             _networkProviderMock.Setup(p => p.GetHostName()).Returns("testhost");
             _networkProviderMock.Setup(p => p.GetHostAddresses(It.IsAny<string>())).Returns(new[] { IPAddress.Parse("10.0.0.1") });
             _networkProviderMock.Setup(p => p.GetAllNetworkInterfaces()).Returns(new List<NetworkInterface>());
 
             var service = CreateService();
-            Assert.IsFalse(service.CheckAttendance());
+            Assert.IsFalse(service.TakeAttendance());
         }
 
         #endregion
