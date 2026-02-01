@@ -8,7 +8,7 @@ namespace OfficeAttendanceTracker.Core
         /// <summary>
         /// Already met the entire month's requirement - no more attendance needed
         /// </summary>
-        AbsolutelyFine,
+        Secured,
         
         /// <summary>
         /// Meeting the rolling requirement (up to current business days)
@@ -26,3 +26,4 @@ namespace OfficeAttendanceTracker.Core
         Critical
     }
 }
+

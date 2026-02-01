@@ -104,39 +104,22 @@ namespace OfficeAttendanceTracker.Core
         public ComplianceStatus GetComplianceStatus()
         {
             var attendance = GetCurrentMonthAttendance();
-            
-            // Rolling: business days up to today (for current compliance target)
             var businessDaysUpToToday = GetBusinessDaysUpToToday();
-            
-            // Total: entire month's business days (for AbsolutelyFine status)
             var totalBusinessDaysInMonth = GetBusinessDaysInCurrentMonth();
-            
-            // Remaining business days from tomorrow onwards
             var remainingBusinessDays = totalBusinessDaysInMonth - businessDaysUpToToday;
             
-            // Required for entire month - AbsolutelyFine threshold
             var requiredForEntireMonth = (int)Math.Ceiling(totalBusinessDaysInMonth * _complianceThreshold);
-            
-            // Required for rolling (up to today) - Compliant threshold
             var requiredForRolling = (int)Math.Ceiling(businessDaysUpToToday * _complianceThreshold);
-            
-            // Maximum possible attendance if all remaining days are attended
             var maxPossibleAttendance = attendance + remainingBusinessDays;
 
-            // AbsolutelyFine: Already met entire month's requirement
             if (attendance >= requiredForEntireMonth)
-                return ComplianceStatus.AbsolutelyFine;
-            
-            // Compliant: Meeting rolling requirement (up to today)
-            if (attendance >= requiredForRolling)
+                return ComplianceStatus.Secured;
+            else if (attendance >= requiredForRolling)
                 return ComplianceStatus.Compliant;
-            
-            // Critical: Impossible to meet target even with perfect attendance for remainder
-            if (maxPossibleAttendance < requiredForEntireMonth)
+            else if (maxPossibleAttendance < requiredForEntireMonth)
                 return ComplianceStatus.Critical;
-            
-            // Warning: Below rolling threshold but still achievable
-            return ComplianceStatus.Warning;
+            else
+                return ComplianceStatus.Warning;
         }
 
 

@@ -192,7 +192,7 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            Assert.AreEqual(ComplianceStatus.AbsolutelyFine, status);
+            Assert.AreEqual(ComplianceStatus.Secured, status);
         }
 
         [TestMethod]
@@ -317,7 +317,7 @@ namespace OfficeAttendanceTracker.Test
         }
 
         [TestMethod]
-        public void GetComplianceStatus_ReturnsAbsolutelyFine_WhenAttendanceExactlyAtEntireMonthThreshold()
+        public void GetComplianceStatus_ReturnsSecured_WhenAttendanceExactlyAtEntireMonthThreshold()
         {
             // Arrange: Attendance exactly at entire month's requirement
             var config = BuildConfig(new Dictionary<string, string>
@@ -338,7 +338,7 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            Assert.AreEqual(ComplianceStatus.AbsolutelyFine, status);
+            Assert.AreEqual(ComplianceStatus.Secured, status);
         }
 
         [TestMethod]
@@ -365,10 +365,10 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            // With attendance below rolling required, should be Warning or Critical (not Compliant or AbsolutelyFine)
+            // With attendance below rolling required, should be Warning or Critical (not Compliant or Secured)
             Assert.IsTrue(status == ComplianceStatus.Warning || status == ComplianceStatus.Critical);
             Assert.AreNotEqual(ComplianceStatus.Compliant, status);
-            Assert.AreNotEqual(ComplianceStatus.AbsolutelyFine, status);
+            Assert.AreNotEqual(ComplianceStatus.Secured, status);
         }
 
         [TestMethod]
@@ -389,7 +389,7 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            Assert.AreEqual(ComplianceStatus.AbsolutelyFine, status);
+            Assert.AreEqual(ComplianceStatus.Secured, status);
         }
 
 
