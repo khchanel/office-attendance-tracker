@@ -24,7 +24,7 @@ namespace OfficeAttendanceTracker.Core
         }
 
         protected readonly string _dataFilePath;
-        private List<AttendanceRecord> _attendanceRecords;
+        protected List<AttendanceRecord> _attendanceRecords;
         private bool _isDirty;
         private bool _isInitialized;
         private Timer? _autoSaveTimer;
