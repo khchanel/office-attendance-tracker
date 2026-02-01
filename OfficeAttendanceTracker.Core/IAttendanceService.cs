@@ -2,10 +2,14 @@
 {
     public interface IAttendanceService
     {
-        bool CheckAttendance();
         int GetCurrentMonthAttendance();
-        void TakeAttendance();
+        bool TakeAttendance();
         void Reload();
+        
+        /// <summary>
+        /// Indicates whether any office networks have been configured
+        /// </summary>
+        bool IsReady { get; }
         
         /// <summary>
         /// Calculates the number of business days (Mon-Fri) in the current month

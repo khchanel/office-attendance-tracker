@@ -75,12 +75,13 @@ namespace OfficeAttendanceTracker.Test
         #region Constructor Tests
 
         [TestMethod]
-        public void Constructor_Throws_WhenNetworksConfigMissing()
+        public void Constructor_AllowsEmptyNetworks()
         {
             var emptyConfig = new ConfigurationBuilder().Build();
             
-            Assert.ThrowsExactly<ArgumentException>(() => 
-                new AttendanceService(_loggerMock.Object, emptyConfig, _networkProviderMock.Object, _storeMock.Object));
+            // Should not throw - empty networks is allowed
+            var service = new AttendanceService(_loggerMock.Object, emptyConfig, _networkProviderMock.Object, _storeMock.Object);
+            Assert.IsNotNull(service);
         }
 
         [TestMethod]
@@ -90,30 +91,59 @@ namespace OfficeAttendanceTracker.Test
             Assert.IsNotNull(service);
         }
 
+        [TestMethod]
+        public void Constructor_ThrowsOnInvalidCidrFormat()
+        {
+            var invalidConfig = new Dictionary<string, string>
+            {
+                {"Networks:0", "192.168.1.0/24"},
+                {"Networks:1", "invalid-cidr"},
+                {"Networks:2", "10.0.0.0/8"}
+            };
+            
+            var config = BuildConfig(invalidConfig);
+            
+            var exception = Assert.ThrowsException<ArgumentException>(() => 
+                new AttendanceService(_loggerMock.Object, config, _networkProviderMock.Object, _storeMock.Object));
+            
+            Assert.IsTrue(exception.Message.Contains("invalid-cidr"));
+            Assert.IsTrue(exception.Message.Contains("Invalid network CIDR format"));
+        }
+
         #endregion
 
-        #region CheckAttendance Tests
+        #region TakeAttendance Tests
 
         [TestMethod]
-        public void CheckAttendance_ReturnsTrue_WhenHostIpInNetwork()
+        public void TakeAttendance_ReturnsTrue_WhenHostIpInNetwork()
         {
             _networkProviderMock.Setup(p => p.GetHostName()).Returns("testhost");
             _networkProviderMock.Setup(p => p.GetHostAddresses(It.IsAny<string>())).Returns(new[] { IPAddress.Parse("192.168.1.10") });
             _networkProviderMock.Setup(p => p.GetAllNetworkInterfaces()).Returns(new List<NetworkInterface>());
+            
+            // Setup store mock to return null for GetToday (first time)
+            _storeMock.Setup(s => s.GetToday()).Returns((AttendanceRecord?)null);
+            _storeMock.Setup(s => s.Add(It.IsAny<bool>(), It.IsAny<DateTime>())).Returns(new AttendanceRecord { Date = DateTime.Today, IsOffice = false });
+            _storeMock.Setup(s => s.SaveChanges());
 
             var service = CreateService();
-            Assert.IsTrue(service.CheckAttendance());
+            Assert.IsTrue(service.TakeAttendance());
         }
 
         [TestMethod]
-        public void CheckAttendance_ReturnsFalse_WhenNoIpInNetwork()
+        public void TakeAttendance_ReturnsFalse_WhenNoIpInNetwork()
         {
             _networkProviderMock.Setup(p => p.GetHostName()).Returns("testhost");
             _networkProviderMock.Setup(p => p.GetHostAddresses(It.IsAny<string>())).Returns(new[] { IPAddress.Parse("10.0.0.1") });
             _networkProviderMock.Setup(p => p.GetAllNetworkInterfaces()).Returns(new List<NetworkInterface>());
+            
+            // Setup store mock to return null for GetToday (first time)
+            _storeMock.Setup(s => s.GetToday()).Returns((AttendanceRecord?)null);
+            _storeMock.Setup(s => s.Add(It.IsAny<bool>(), It.IsAny<DateTime>())).Returns(new AttendanceRecord { Date = DateTime.Today, IsOffice = false });
+            _storeMock.Setup(s => s.SaveChanges());
 
             var service = CreateService();
-            Assert.IsFalse(service.CheckAttendance());
+            Assert.IsFalse(service.TakeAttendance());
         }
 
         #endregion
@@ -192,7 +222,7 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            Assert.AreEqual(ComplianceStatus.AbsolutelyFine, status);
+            Assert.AreEqual(ComplianceStatus.Secured, status);
         }
 
         [TestMethod]
@@ -259,8 +289,8 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            // At end of month with 11 days (need 12 for entire month), should be Warning
-            Assert.AreEqual(ComplianceStatus.Warning, status);
+            // At end of month with 11 days (need 12 for entire month), impossible to achieve - should be Critical
+            Assert.AreEqual(ComplianceStatus.Critical, status);
         }
 
         [TestMethod]
@@ -294,18 +324,15 @@ namespace OfficeAttendanceTracker.Test
         [TestMethod]
         public void GetComplianceStatus_ReturnsCritical_WhenAttendanceBelowWarningThreshold()
         {
-            // Arrange: Attendance below warningThreshold (based on rolling days)
-            var config = BuildConfig(new Dictionary<string, string>
-            {
-                {"ComplianceThreshold", "0.5"}
-            });
+            // Arrange: Set date early in month and very low attendance - impossible to meet target
+            SetMockDate(new DateTime(2025, 1, 31)); // Last day of month
             
-            var tempService = CreateService(config);
-            var businessDaysUpToToday = tempService.GetBusinessDaysUpToToday();
-            var requiredForRolling = (int)Math.Ceiling(businessDaysUpToToday * 0.5);
-            var marginDays = (int)(businessDaysUpToToday * 0.2);
-            var warningThreshold = requiredForRolling - marginDays;
-            var attendanceDays = Math.Max(0, warningThreshold - 2); // Well below warning
+            var tempService = CreateService();
+            var totalBusinessDays = tempService.GetBusinessDaysInCurrentMonth();
+            var requiredForEntireMonth = (int)Math.Ceiling(totalBusinessDays * 0.5);
+            
+            // Set attendance to half of required - impossible to meet target on last day
+            var attendanceDays = requiredForEntireMonth / 2;
 
             var service = CreateServiceWithAttendanceRecords(attendanceDays, new Dictionary<string, string>
             {
@@ -315,12 +342,12 @@ namespace OfficeAttendanceTracker.Test
             // Act
             var status = service.GetComplianceStatus();
 
-            // Assert
+            // Assert - Impossible to meet target with remaining days
             Assert.AreEqual(ComplianceStatus.Critical, status);
         }
 
         [TestMethod]
-        public void GetComplianceStatus_ReturnsAbsolutelyFine_WhenAttendanceExactlyAtEntireMonthThreshold()
+        public void GetComplianceStatus_ReturnsSecured_WhenAttendanceExactlyAtEntireMonthThreshold()
         {
             // Arrange: Attendance exactly at entire month's requirement
             var config = BuildConfig(new Dictionary<string, string>
@@ -341,7 +368,7 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            Assert.AreEqual(ComplianceStatus.AbsolutelyFine, status);
+            Assert.AreEqual(ComplianceStatus.Secured, status);
         }
 
         [TestMethod]
@@ -368,10 +395,10 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            // With attendance below rolling required, should be Warning or Critical (not Compliant or AbsolutelyFine)
+            // With attendance below rolling required, should be Warning or Critical (not Compliant or Secured)
             Assert.IsTrue(status == ComplianceStatus.Warning || status == ComplianceStatus.Critical);
             Assert.AreNotEqual(ComplianceStatus.Compliant, status);
-            Assert.AreNotEqual(ComplianceStatus.AbsolutelyFine, status);
+            Assert.AreNotEqual(ComplianceStatus.Secured, status);
         }
 
         [TestMethod]
@@ -392,14 +419,15 @@ namespace OfficeAttendanceTracker.Test
             var status = service.GetComplianceStatus();
 
             // Assert
-            Assert.AreEqual(ComplianceStatus.AbsolutelyFine, status);
+            Assert.AreEqual(ComplianceStatus.Secured, status);
         }
 
 
         [TestMethod]
         public void GetComplianceStatus_HandleZeroAttendance()
         {
-            // Arrange: No attendance records
+            // Arrange: No attendance records early in month (still achievable)
+            SetMockDate(new DateTime(2025, 1, 15)); // Mid-month
             _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns(new List<AttendanceRecord>());
             
             var service = CreateService(BuildConfig(new Dictionary<string, string>
@@ -410,8 +438,8 @@ namespace OfficeAttendanceTracker.Test
             // Act
             var status = service.GetComplianceStatus();
 
-            // Assert
-            Assert.AreEqual(ComplianceStatus.Critical, status);
+            // Assert - Mid-month with no attendance should be Warning (still achievable)
+            Assert.AreEqual(ComplianceStatus.Warning, status);
         }
 
         #endregion

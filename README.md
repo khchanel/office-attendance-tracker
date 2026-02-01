@@ -1,123 +1,111 @@
-# Office Attendance Tracker
+﻿# Office Attendance Tracker
 
 [![Github Release](https://img.shields.io/github/v/release/khchanel/office-attendance-tracker?style=flat)](https://github.com/khchanel/office-attendance-tracker/releases)
 [![build](https://github.com/khchanel/office-attendance-tracker/actions/workflows/dotnet.yml/badge.svg)](https://github.com/khchanel/office-attendance-tracker/actions/workflows/dotnet.yml)
 [![build](https://github.com/khchanel/office-attendance-tracker/actions/workflows/go-attendance.yml/badge.svg)](https://github.com/khchanel/office-attendance-tracker/actions/workflows/go-attendance.yml)
 [![build](https://github.com/khchanel/office-attendance-tracker/actions/workflows/json2csv.yml/badge.svg)](https://github.com/khchanel/office-attendance-tracker/actions/workflows/json2csv.yml)
 
-Automatically detect and track your office attendance using Windows system tray app or background service.
+Automatically track your office attendance by detecting your presence on configured office networks. No manual check-in required!
 
 ## Features
-- Automatic detection of office presence based on configured network CIDR ranges
-- Configurable
-- Currently support file-based storage in CSV or JSON format.
-- Lightweight with minimal resource usage
-- Easy deployment as Windows Service or Desktop App
-- Did I mention its fully automatic? - no manual check-in/out needed!
 
-## Deployment Options
+- **Automatic Office Detection and Tracking** - Automatically detects if you're on office networks
+- **No Manual Check-In** - Attendance is recorded silently in the background
+- **Two Deployment Modes** - Windows Service (background) or Desktop App (system tray)
+- **Visual Feedback** - Color-coded compliance status in system tray
+- **Minimal Resource Usage** - Lightweight and efficient
 
-Two deployment modes are available:
+## Quick Start
 
-1. **Windows Service** (`OfficeAttendanceTracker.Service`) - Runs as a background service with no UI
-2. **Desktop App** (`OfficeAttendanceTracker.Desktop`) - System tray application with visual feedback
+### Prerequisites
+- .NET 8 Runtime
+- Windows OS
 
-## Prerequisites
-* .NET 8 SDK
-* Windows OS
-* Administrator privileges (for Windows Service installation)
+### Desktop App (Recommended)
 
----
+1. Download and run `OfficeAttendanceTracker.Desktop.exe`
+2. Configure office networks via Settings dialog (right-click tray icon)
+3. Click "Detect Current" to auto-detect your network, or enter manually in CIDR format
 
-## Build
+### Windows Service
 
-Build all projects:
-```
-dotnet build
-```
-
-Publish a specific project:
-```
-dotnet publish OfficeAttendanceTracker.Service -c Release -o ./publish/service
-dotnet publish OfficeAttendanceTracker.Desktop -c Release -o ./publish/desktop
-```
-
----
+1. Install: `sc create "OfficeAttendanceTracker" binPath="path\to\OfficeAttendanceTracker.Service.exe"`
+2. Edit `appsettings.json` to configure networks
+3. Start: `sc start "OfficeAttendanceTracker"`
 
 ## Configuration
 
-Edit `appsettings.json` in the respective project directory:
+### Desktop App
+- Managed through UI (right-click tray icon → Settings)
+- Settings stored in `user-settings.json`
+- Data saved to `%USERPROFILE%\attendance.csv` by default
 
+### Windows Service
+- Edit `appsettings.json` manually
+- Configure networks, poll interval, and compliance threshold
+- Restart service after changes
+
+**Example Configuration:**
 ```json
 {
-  "Networks": ["10.8.1.0/24", "10.1.0.0/16"],
+  "Networks": ["10.8.1.0/24", "192.168.1.0/24"],
   "PollIntervalMs": 1800000,
-  "DataFilePath": null,
-  "DataFileName": "attendance.csv"
+  "ComplianceThreshold": 0.5
 }
 ```
 
-**Configuration Options:**
-- `Networks`: Office network CIDR ranges used to detect office presence (observe your computer network IP while in office network)
-- `PollIntervalMs`: Network check interval in milliseconds (default: 30 minutes)
-- `DataFilePath`: Storage path for attendance data (null = application directory) e.g. "D:\\attendance"
-- `DataFileName`: Name of attendance file (supports .csv or .json)
+## Screenshots
 
----
+<details>
+<summary>Desktop UI</summary>
 
-## Running the Application
+**System Tray Icon:**
+![System Tray Icon](./docs/screenshots/Screenshot-3.png)
 
-### Option 1: Windows Service (Background)
+**Settings Dialog:**
+![Settings UI](./docs/screenshots/Screenshot-SettingsUI.png)
 
-**Install:**
-```
-sc create "OfficeAttendanceTracker" binPath= "C:\path\to\publish\service\OfficeAttendanceTracker.Service.exe"
-```
+</details>
 
-**Start:**
-```
-sc start "OfficeAttendanceTracker"
-```
+## Building from Source
 
-**Stop:**
-```
-sc stop "OfficeAttendanceTracker"
-```
+```bash
+# Build all projects
+dotnet build
 
-**Uninstall:**
-```
-sc delete "OfficeAttendanceTracker"
+# Publish Desktop
+dotnet publish OfficeAttendanceTracker.Desktop -c Release -o ./publish/desktop
+
+# Publish Service
+dotnet publish OfficeAttendanceTracker.Service -c Release -o ./publish/service
 ```
 
-### Option 2: Desktop System Tray App
+## How It Works
 
-Run the executable:
-```
-.\publish\desktop\OfficeAttendanceTracker.Desktop.exe
-```
+1. Monitors your network connection at configured intervals
+2. Checks if you're on an office network (via CIDR matching)
+3. Records attendance if detected on office network
+4. Provides visual feedback (Desktop) or logs silently (Service)
 
-Or during development:
-```
-dotnet run --project OfficeAttendanceTracker.Desktop
-```
+## FAQ
 
-The app will start in the system tray showing current month's attendance count.
+**Q: How is attendance calculated?**  
+A: One attendance day per calendar day when detected on office network.
 
-#### Desktop UI
+**Q: Can I use multiple office locations?**  
+A: Yes, configure multiple network ranges.
 
-The system tray app automatically track attendance and provides intuitive visual feedback for your office attendance:
+**Q: Where is data stored?**  
+A: Desktop: User profile directory. Service: Application directory. Both customizable.
 
-![System Tray Icon](./docs/screenshots/Screenshot-1.png)
+**Q: What's the difference between Desktop and Service?**  
+A: Desktop has GUI and runs per-user. Service runs system-wide in background.
 
-![Context Menu](./docs/screenshots/Screenshot-2.png)
+## Contributing
 
-![Tooltip with Count](./docs/screenshots/Screenshot-3.png)
+Contributions welcome! See issues for planned features and improvements.
 
----
+## License
 
-## Development
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Run as console app for testing:
-```
-dotnet run --project OfficeAttendanceTracker.Service
-```

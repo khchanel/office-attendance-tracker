@@ -4,8 +4,14 @@
 
 namespace OfficeAttendanceTracker.Core
 {
-    public interface IAttendanceRecordStore
+    public interface IAttendanceRecordStore : IDisposable
     {
+        /// <summary>
+        /// Initialize the store by loading data from storage.
+        /// Must be called before using the store.
+        /// </summary>
+        void Initialize();
+
         /// <summary>
         /// Take attendance for <paramref name="date"/>
         /// </summary>
@@ -27,9 +33,14 @@ namespace OfficeAttendanceTracker.Core
         void Clear();
 
         /// <summary>
-        /// Refresh data from storage
+        /// Refresh data from storage, discarding any unsaved changes
         /// </summary>
-        void Load();
+        void Reload();
+
+        /// <summary>
+        /// Persist all pending changes to storage
+        /// </summary>
+        void SaveChanges();
 
         List<AttendanceRecord> GetAll();
         List<AttendanceRecord> GetAll(DateTime startDate, DateTime endDate);
