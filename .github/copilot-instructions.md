@@ -1,5 +1,25 @@
 # GitHub Copilot Instructions for Office Attendance Tracker
 
+## Response Guidelines
+
+### Conciseness
+- Provide direct, actionable answers
+- Avoid unnecessary explanations of obvious concepts
+- Focus on the specific problem at hand
+- Use code examples instead of lengthy descriptions
+- Avoid using emojis in code as it affect readability and compatibility
+
+### Problem-Solving Approach
+1. **Identify Root Cause**: Consider what might be causing the issue before suggesting fixes
+2. **Evaluate Alternatives**: Think through multiple solutions and recommend the best approach
+3. **Anticipate Issues**: Consider edge cases, potential bugs, and performance implications
+4. **Verify Assumptions**: Question requirements if something seems wrong or suboptimal
+
+### When to Be Verbose
+- Explaining complex architectural decisions
+- Documenting non-obvious behavior
+- Providing context for breaking changes
+
 ## Project Overview
 
 This is a .NET 8 application that automatically tracks office attendance by detecting presence on configured office networks. The solution supports two deployment modes: a Windows Desktop application with GUI and a Windows Service for background operation.
