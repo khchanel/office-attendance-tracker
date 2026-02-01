@@ -1,7 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using OfficeAttendanceTracker.Core;
 
@@ -14,12 +13,14 @@ namespace OfficeAttendanceTracker.Desktop
         private readonly NotifyIcon _trayIcon;
         private readonly IHost _host;
         private readonly IAttendanceService _attendanceService;
+        private readonly SettingsManager _settingsManager;
         private readonly System.Windows.Forms.Timer _updateTimer;
 
-        public TrayApplicationContext(IHost host, IAttendanceService attendanceService, IConfiguration configuration)
+        public TrayApplicationContext(IHost host, IAttendanceService attendanceService, SettingsManager settingsManager)
         {
             _host = host;
             _attendanceService = attendanceService;
+            _settingsManager = settingsManager;
 
             _trayIcon = new NotifyIcon()
             {
@@ -30,6 +31,7 @@ namespace OfficeAttendanceTracker.Desktop
             };
 
             _trayIcon.ContextMenuStrip.Items.Add("Refresh", null, OnRefresh);
+            _trayIcon.ContextMenuStrip.Items.Add("Settings...", null, OnSettings);
             _trayIcon.ContextMenuStrip.Items.Add(new ToolStripSeparator());
             _trayIcon.ContextMenuStrip.Items.Add("Exit", null, OnExit);
             _trayIcon.MouseClick += (s, e) =>
@@ -41,14 +43,32 @@ namespace OfficeAttendanceTracker.Desktop
             };
             _trayIcon.ShowBalloonTip(2000, AppName, "Application started and running in the system tray.", ToolTipIcon.Info);
 
-            // Update timer using PollIntervalMs from configuration
-            var pollIntervalMs = configuration.GetValue("PollIntervalMs", 60000); // Default 60 seconds
+            // Update timer using PollIntervalMs from settings
+            var pollIntervalMs = _settingsManager.CurrentSettings.PollIntervalMs;
             _updateTimer = new System.Windows.Forms.Timer();
             _updateTimer.Interval = pollIntervalMs;
             _updateTimer.Tick += (s, e) => UpdateAttendanceCount();
+            
+            // Subscribe to settings changes
+            _settingsManager.SettingsChanged += OnSettingsChanged;
+            
             _updateTimer.Start();
 
             UpdateAttendanceCount();
+
+            // Show settings on first run
+            if (_settingsManager.IsFirstRun)
+            {
+                MessageBox.Show(
+                    "Welcome to Office Attendance Tracker!\n\n" +
+                    "Please configure your office network settings to begin tracking attendance.\n\n" +
+                    "You can access settings anytime by right-clicking the tray icon.",
+                    AppName,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                
+                OnSettings(null, EventArgs.Empty);
+            }
         }
 
         /// <summary>
@@ -85,7 +105,6 @@ namespace OfficeAttendanceTracker.Desktop
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
 
-                // Get status from service (business logic), then map to color (UI concern)
                 var status = _attendanceService.GetComplianceStatus();
                 var backgroundColor = GetComplianceColor(status);
 
@@ -102,9 +121,8 @@ namespace OfficeAttendanceTracker.Desktop
                 }
 
                 // Draw the number
-                string text = attendance.ToString();
-
                 // Only need 1-digit (0-9) or 2-digit (10-31) - max is 31 days per month
+                string text = attendance.ToString();
                 int fontSize = text.Length == 1 ? 36 : 30;
                 using (Font font = new Font("Segoe UI", fontSize, FontStyle.Bold, GraphicsUnit.Pixel))
                 using (SolidBrush textBrush = new SolidBrush(Color.White))
@@ -165,11 +183,31 @@ namespace OfficeAttendanceTracker.Desktop
             _trayIcon.ShowBalloonTip(2000, AppName, $"Refreshed: {_trayIcon.Text}", ToolTipIcon.Info);
         }
 
+        private void OnSettings(object? sender, EventArgs e)
+        {
+            using var settingsForm = new SettingsForm(_settingsManager);
+            settingsForm.ShowDialog();
+        }
+
+        private void OnSettingsChanged(object? sender, AppSettings settings)
+        {
+            // Update timer interval if changed
+            if (_updateTimer.Interval != settings.PollIntervalMs)
+            {
+                _updateTimer.Stop();
+                _updateTimer.Interval = settings.PollIntervalMs;
+                _updateTimer.Start();
+            }
+        }
+
         private void OnExit(object? sender, EventArgs e)
         {
             _trayIcon.Visible = false;
             _updateTimer.Stop();
             _updateTimer.Dispose();
+
+            // Unsubscribe from settings changes
+            _settingsManager.SettingsChanged -= OnSettingsChanged;
 
             // Dispose icon before disposing the NotifyIcon
             if (_trayIcon.Icon != null && _trayIcon.Icon != SystemIcons.Application)

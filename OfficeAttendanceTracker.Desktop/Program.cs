@@ -4,14 +4,30 @@ using Microsoft.Extensions.Hosting;
 using OfficeAttendanceTracker.Core;
 using OfficeAttendanceTracker.Desktop;
 
+// Apply STAThread using module initializer approach
+System.Threading.Thread.CurrentThread.SetApartmentState(System.Threading.ApartmentState.Unknown);
+System.Threading.Thread.CurrentThread.SetApartmentState(System.Threading.ApartmentState.STA);
+
+// Initialize SettingsManager first
+var settingsManager = new SettingsManager();
+
 var builder = Host.CreateApplicationBuilder(args);
+
+// Clear default configuration sources and add our custom settings provider
+builder.Configuration.Sources.Clear();
+builder.Configuration.AddInMemoryCollection(); // For logging configuration if needed
+var settingsSource = new SettingsConfigurationSource(settingsManager);
+builder.Configuration.Sources.Add(settingsSource);
+
+// Register SettingsManager as singleton
+builder.Services.AddSingleton(settingsManager);
 
 builder.Services.AddTransient<INetworkInfoProvider, DefaultNetworkInfoProvider>();
 builder.Services.AddSingleton<IDateTimeProvider, DefaultDateTimeProvider>();
 builder.Services.AddSingleton<IAttendanceService, AttendanceService>();
 
-// Get DataFileName from configuration
-var dataFileName = builder.Configuration["DataFileName"] ?? "attendance.csv";
+// Get DataFileName from settings
+var dataFileName = settingsManager.CurrentSettings.DataFileName;
 var extension = Path.GetExtension(dataFileName).ToLowerInvariant();
 
 // Register store with explicit initialization
@@ -33,8 +49,7 @@ builder.Services.AddSingleton<IAttendanceRecordStore>(provider =>
 });
 
 // Conditionally add Worker based on configuration
-var enableBackgroundWorker = builder.Configuration.GetValue("EnableBackgroundWorker", true);
-if (enableBackgroundWorker)
+if (settingsManager.CurrentSettings.EnableBackgroundWorker)
 {
     builder.Services.AddHostedService<Worker>();
 }
@@ -46,9 +61,8 @@ _ = Task.Run(() => host.RunAsync());
 
 // Get the attendance service from DI
 var attendanceService = host.Services.GetRequiredService<IAttendanceService>();
-var configuration = host.Services.GetRequiredService<IConfiguration>();
 
 // Initialize and run Windows Forms application with system tray
 System.Windows.Forms.Application.EnableVisualStyles();
 System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
-System.Windows.Forms.Application.Run(new TrayApplicationContext(host, attendanceService, configuration));
+System.Windows.Forms.Application.Run(new TrayApplicationContext(host, attendanceService, settingsManager));

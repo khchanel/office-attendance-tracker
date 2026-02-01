@@ -46,12 +46,34 @@ dotnet publish OfficeAttendanceTracker.Desktop -c Release -o ./publish/desktop
 
 ## Configuration
 
-Edit `appsettings.json` in the respective project directory:
+### Desktop App - UI Settings
+
+The Desktop app uses **`user-settings.json`** managed entirely through the UI. No manual file editing needed!
+
+Access settings from the system tray menu:
+
+1. Right-click the system tray icon
+2. Select **Settings...**
+3. Configure the following options:
+   - **Office Networks (CIDR)**: Network ranges to detect office presence (one per line)
+   - **Poll Interval**: How often to check network status (in seconds)
+   - **Enable Background Worker**: Enable automatic background monitoring
+   - **Compliance Threshold**: Percentage threshold for attendance compliance
+   - **Data File Path**: Where to store attendance data (leave empty for app directory)
+   - **Data File Name**: Name of the attendance file (supports .csv or .json)
+
+**Settings file location:** `user-settings.json` in the application directory  
+**Note:** Changes to networks, data path/filename, and background worker require an application restart.
+
+### Windows Service - Configuration File
+
+The Windows Service uses **`appsettings.json`** for configuration. Edit this file manually:
 
 ```json
 {
   "Networks": ["10.8.1.0/24", "10.1.0.0/16"],
   "PollIntervalMs": 1800000,
+  "ComplianceThreshold": 0.5,
   "DataFilePath": null,
   "DataFileName": "attendance.csv"
 }
@@ -60,8 +82,11 @@ Edit `appsettings.json` in the respective project directory:
 **Configuration Options:**
 - `Networks`: Office network CIDR ranges used to detect office presence (observe your computer network IP while in office network)
 - `PollIntervalMs`: Network check interval in milliseconds (default: 30 minutes)
+- `ComplianceThreshold`: Threshold for compliance status (0.0 to 1.0, default: 0.5 = 50%)
 - `DataFilePath`: Storage path for attendance data (null = application directory) e.g. "D:\\attendance"
 - `DataFileName`: Name of attendance file (supports .csv or .json)
+
+**Important:** Restart the Windows Service after editing `appsettings.json`.
 
 ---
 
