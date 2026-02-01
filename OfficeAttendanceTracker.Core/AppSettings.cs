@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 
-namespace OfficeAttendanceTracker.Desktop
+namespace OfficeAttendanceTracker.Core
 {
     /// <summary>
-    /// Application settings model
+    /// Application settings model shared across Desktop and Service projects
     /// </summary>
     public class AppSettings
     {
@@ -20,10 +20,32 @@ namespace OfficeAttendanceTracker.Desktop
         public double ComplianceThreshold { get; set; } = 0.5; // 50%
 
         [JsonPropertyName("dataFilePath")]
-        public string? DataFilePath { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        public string? DataFilePath { get; set; } = null;
 
         [JsonPropertyName("dataFileName")]
         public string DataFileName { get; set; } = "attendance.csv";
+
+        /// <summary>
+        /// Creates default settings for Desktop application
+        /// </summary>
+        public static AppSettings CreateDesktopDefaults()
+        {
+            return new AppSettings
+            {
+                DataFilePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+            };
+        }
+
+        /// <summary>
+        /// Creates default settings for Windows Service
+        /// </summary>
+        public static AppSettings CreateServiceDefaults()
+        {
+            return new AppSettings
+            {
+                DataFilePath = null // Service uses application directory
+            };
+        }
 
         /// <summary>
         /// Creates a deep copy of the settings

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
+using OfficeAttendanceTracker.Core;
 
 namespace OfficeAttendanceTracker.Desktop
 {

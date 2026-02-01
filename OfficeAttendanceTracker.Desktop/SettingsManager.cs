@@ -1,4 +1,5 @@
 using System.Text.Json;
+using OfficeAttendanceTracker.Core;
 
 namespace OfficeAttendanceTracker.Desktop
 {
@@ -52,7 +53,7 @@ namespace OfficeAttendanceTracker.Desktop
                 {
                     var json = File.ReadAllText(_settingsFilePath);
                     var settings = JsonSerializer.Deserialize<AppSettings>(json);
-                    return settings ?? new AppSettings();
+                    return settings ?? AppSettings.CreateDesktopDefaults();
                 }
             }
             catch (Exception ex)
@@ -60,7 +61,7 @@ namespace OfficeAttendanceTracker.Desktop
                 System.Diagnostics.Debug.WriteLine($"Failed to load settings: {ex.Message}");
             }
 
-            return new AppSettings();
+            return AppSettings.CreateDesktopDefaults();
         }
 
         public void SaveSettings(AppSettings settings)

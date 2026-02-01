@@ -397,7 +397,7 @@ namespace OfficeAttendanceTracker.Desktop
 
         private void ResetButton_Click(object? sender, EventArgs e)
         {
-            var defaults = new AppSettings();
+            var defaults = AppSettings.CreateDesktopDefaults();
             
             var message = "Are you sure you want to reset all settings to their default values?\n\nThis will restore:\n" +
                 $"- Office Networks: {string.Join(", ", defaults.Networks)}\n" +
