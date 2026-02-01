@@ -188,7 +188,17 @@ namespace OfficeAttendanceTracker.Desktop
                 var complianceText = GetComplianceStatusText(complianceStatus);
                 var officeStatusText = isInOffice ? "[YES] Currently in office" : "[NO] Not in office";
                 
-                var message = $"Office Days for {currentMonth}: {count} days\n{officeStatusText}\n{complianceText}";
+                // Show warning if no networks configured
+                string message;
+                if (!_attendanceService.IsReady)
+                {
+                    message = $"Office Days for {currentMonth}: {count} days\n[!] Not configured - Right-click and open Settings to configure networks then restart";
+                }
+                else
+                {
+                    message = $"Office Days for {currentMonth}: {count} days\n{officeStatusText}\n{complianceText}";
+                }
+                
                 _trayIcon.Text = message;
                 
                 if (showBalloonTip)

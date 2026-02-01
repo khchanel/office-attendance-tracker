@@ -75,12 +75,13 @@ namespace OfficeAttendanceTracker.Test
         #region Constructor Tests
 
         [TestMethod]
-        public void Constructor_Throws_WhenNetworksConfigMissing()
+        public void Constructor_AllowsEmptyNetworks()
         {
             var emptyConfig = new ConfigurationBuilder().Build();
             
-            Assert.ThrowsExactly<ArgumentException>(() => 
-                new AttendanceService(_loggerMock.Object, emptyConfig, _networkProviderMock.Object, _storeMock.Object));
+            // Should not throw - empty networks is allowed
+            var service = new AttendanceService(_loggerMock.Object, emptyConfig, _networkProviderMock.Object, _storeMock.Object);
+            Assert.IsNotNull(service);
         }
 
         [TestMethod]
@@ -88,6 +89,25 @@ namespace OfficeAttendanceTracker.Test
         {
             var service = CreateService();
             Assert.IsNotNull(service);
+        }
+
+        [TestMethod]
+        public void Constructor_ThrowsOnInvalidCidrFormat()
+        {
+            var invalidConfig = new Dictionary<string, string>
+            {
+                {"Networks:0", "192.168.1.0/24"},
+                {"Networks:1", "invalid-cidr"},
+                {"Networks:2", "10.0.0.0/8"}
+            };
+            
+            var config = BuildConfig(invalidConfig);
+            
+            var exception = Assert.ThrowsException<ArgumentException>(() => 
+                new AttendanceService(_loggerMock.Object, config, _networkProviderMock.Object, _storeMock.Object));
+            
+            Assert.IsTrue(exception.Message.Contains("invalid-cidr"));
+            Assert.IsTrue(exception.Message.Contains("Invalid network CIDR format"));
         }
 
         #endregion
@@ -100,6 +120,11 @@ namespace OfficeAttendanceTracker.Test
             _networkProviderMock.Setup(p => p.GetHostName()).Returns("testhost");
             _networkProviderMock.Setup(p => p.GetHostAddresses(It.IsAny<string>())).Returns(new[] { IPAddress.Parse("192.168.1.10") });
             _networkProviderMock.Setup(p => p.GetAllNetworkInterfaces()).Returns(new List<NetworkInterface>());
+            
+            // Setup store mock to return null for GetToday (first time)
+            _storeMock.Setup(s => s.GetToday()).Returns((AttendanceRecord?)null);
+            _storeMock.Setup(s => s.Add(It.IsAny<bool>(), It.IsAny<DateTime>())).Returns(new AttendanceRecord { Date = DateTime.Today, IsOffice = false });
+            _storeMock.Setup(s => s.SaveChanges());
 
             var service = CreateService();
             Assert.IsTrue(service.TakeAttendance());
@@ -111,6 +136,11 @@ namespace OfficeAttendanceTracker.Test
             _networkProviderMock.Setup(p => p.GetHostName()).Returns("testhost");
             _networkProviderMock.Setup(p => p.GetHostAddresses(It.IsAny<string>())).Returns(new[] { IPAddress.Parse("10.0.0.1") });
             _networkProviderMock.Setup(p => p.GetAllNetworkInterfaces()).Returns(new List<NetworkInterface>());
+            
+            // Setup store mock to return null for GetToday (first time)
+            _storeMock.Setup(s => s.GetToday()).Returns((AttendanceRecord?)null);
+            _storeMock.Setup(s => s.Add(It.IsAny<bool>(), It.IsAny<DateTime>())).Returns(new AttendanceRecord { Date = DateTime.Today, IsOffice = false });
+            _storeMock.Setup(s => s.SaveChanges());
 
             var service = CreateService();
             Assert.IsFalse(service.TakeAttendance());

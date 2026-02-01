@@ -7,6 +7,11 @@
         void Reload();
         
         /// <summary>
+        /// Indicates whether any office networks have been configured
+        /// </summary>
+        bool IsReady { get; }
+        
+        /// <summary>
         /// Calculates the number of business days (Mon-Fri) in the current month
         /// </summary>
         int GetBusinessDaysInCurrentMonth();
