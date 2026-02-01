@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OfficeAttendanceTracker.Core;
 
@@ -185,7 +186,8 @@ namespace OfficeAttendanceTracker.Desktop
 
         private void OnSettings(object? sender, EventArgs e)
         {
-            using var settingsForm = new SettingsForm(_settingsManager);
+            var networkDetectionService = _host.Services.GetRequiredService<INetworkDetectionService>();
+            using var settingsForm = new SettingsForm(_settingsManager, networkDetectionService);
             settingsForm.ShowDialog();
         }
 

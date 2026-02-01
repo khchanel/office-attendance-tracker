@@ -23,6 +23,7 @@ builder.Configuration.Sources.Add(settingsSource);
 builder.Services.AddSingleton(settingsManager);
 
 builder.Services.AddTransient<INetworkInfoProvider, DefaultNetworkInfoProvider>();
+builder.Services.AddTransient<INetworkDetectionService, NetworkDetectionService>();
 builder.Services.AddSingleton<IDateTimeProvider, DefaultDateTimeProvider>();
 builder.Services.AddSingleton<IAttendanceService, AttendanceService>();
 

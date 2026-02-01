@@ -20,10 +20,10 @@ Automatically detect and track your office attendance using Windows system tray 
 Two deployment modes are available:
 
 1. **Windows Service** (`OfficeAttendanceTracker.Service`) - Runs as a background service with no UI
-2. **Desktop App** (`OfficeAttendanceTracker.Desktop`) - System tray application with visual feedback
+2. **Desktop App** (`OfficeAttendanceTracker.Desktop`) - System tray application with GUI
 
 ## Prerequisites
-* .NET 8 SDK
+* .NET 8
 * Windows OS
 * Administrator privileges (for Windows Service installation)
 
@@ -92,7 +92,21 @@ The Windows Service uses **`appsettings.json`** for configuration. Edit this fil
 
 ## Running the Application
 
-### Option 1: Windows Service (Background)
+### Option 1: Desktop System Tray App
+
+Run the executable:
+```
+.\publish\desktop\OfficeAttendanceTracker.Desktop.exe
+```
+
+Or during development:
+```
+dotnet run --project OfficeAttendanceTracker.Desktop
+```
+
+The app will start in the system tray showing current month's attendance count.
+
+### Option 2: Windows Service (Background)
 
 **Install:**
 ```
@@ -114,35 +128,65 @@ sc stop "OfficeAttendanceTracker"
 sc delete "OfficeAttendanceTracker"
 ```
 
-### Option 2: Desktop System Tray App
-
-Run the executable:
-```
-.\publish\desktop\OfficeAttendanceTracker.Desktop.exe
-```
-
-Or during development:
-```
-dotnet run --project OfficeAttendanceTracker.Desktop
-```
-
-The app will start in the system tray showing current month's attendance count.
 
 #### Desktop UI
 
-The system tray app automatically track attendance and provides intuitive visual feedback for your office attendance:
+The system tray app automatically tracks attendance and provides intuitive visual feedback for your office attendance:
+
+**System Tray Icon:**
 
 ![System Tray Icon](./docs/screenshots/Screenshot-1.png)
 
+The icon displays your current month's office attendance count with color-coded compliance status:
+- **Green** - Already met threshold for the rest of the month
+- **Blue** - Compliant up to current date
+- **Orange** - Warning below threshold
+- **Red** - Critically below threshold
+
+**Context Menu:**
+
 ![Context Menu](./docs/screenshots/Screenshot-2.png)
+
+Right-click the tray icon to access:
+- **Refresh** - Manually update attendance count
+- **Settings...** - Open settings dialog
+- **Exit** - Close the application
+
+**Hover Tooltip:**
 
 ![Tooltip with Count](./docs/screenshots/Screenshot-3.png)
 
+Hover over the icon to see detailed attendance information.
+
+**Settings UI**
+
+![Settings UI](./docs/screenshots/Screenshot-SettingsUI.png)
+
+
 ---
 
-## Development
 
-Run as console app for testing:
-```
-dotnet run --project OfficeAttendanceTracker.Service
-```
+## FAQ
+
+**Q: Why do I need to restart the application after changing some settings?**  
+A: Settings like network ranges, background worker status, and data file paths are loaded during application startup. These require a restart to reinitialize the monitoring services.
+
+**Q: Can I use this on multiple computers?**  
+A: Yes! Each installation maintains its own attendance data. You can configure different settings on each computer, or you could put data file on shared drive.
+
+**Q: Does this work with multiple office locations?**  
+A: Yes! Configure multiple network ranges in the Office Networks setting. The app will detect presence on any of the configured networks.
+
+**Q: What happens if my network configuration changes?**  
+A: Use the "Detect Current" button in settings to detect the new network configuration. The app will continue tracking with previously configured networks until updated.
+
+**Q: How is attendance calculated?**  
+A: Attendance is tracked per day. If you're detected on an office network at any point during a day, that day counts toward your attendance.
+
+**Q: Can I export my attendance data?**  
+A: Yes! The attendance data is stored in CSV or JSON format (your choice) and can be easily opened in Excel or any data analysis tool.
+
+**Q: What's the difference between Desktop and Service deployments?**  
+A: Desktop provides a system tray icon with visual feedback and easy settings access. Service runs invisibly in the background. Both track attendance identically.
+
+

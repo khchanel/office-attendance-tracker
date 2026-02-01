@@ -8,7 +8,7 @@ namespace OfficeAttendanceTracker.Desktop
     public class AppSettings
     {
         [JsonPropertyName("networks")]
-        public List<string> Networks { get; set; } = new List<string> { "10.8.1.0/24", "10.1.0.0/16" };
+        public List<string> Networks { get; set; } = [];
 
         [JsonPropertyName("pollIntervalMs")]
         public int PollIntervalMs { get; set; } = 1800000; // 30 minutes default

@@ -1,4 +1,5 @@
 using System.Windows.Forms;
+using OfficeAttendanceTracker.Core;
 
 namespace OfficeAttendanceTracker.Desktop
 {
@@ -8,9 +9,11 @@ namespace OfficeAttendanceTracker.Desktop
     public class SettingsForm : Form
     {
         private readonly SettingsManager _settingsManager;
+        private readonly INetworkDetectionService _networkDetectionService;
         private AppSettings _workingSettings;
 
         private TextBox _networksTextBox;
+        private Button _detectNetworkButton;
         private NumericUpDown _pollIntervalNumeric;
         private CheckBox _enableBackgroundWorkerCheckBox;
         private NumericUpDown _complianceThresholdNumeric;
@@ -22,9 +25,10 @@ namespace OfficeAttendanceTracker.Desktop
         private Button _resetButton;
         private Label _restartLabel;
 
-        public SettingsForm(SettingsManager settingsManager)
+        public SettingsForm(SettingsManager settingsManager, INetworkDetectionService networkDetectionService)
         {
             _settingsManager = settingsManager;
+            _networkDetectionService = networkDetectionService;
             _workingSettings = _settingsManager.CurrentSettings;
             InitializeComponents();
             LoadSettings();
@@ -68,17 +72,40 @@ namespace OfficeAttendanceTracker.Desktop
                 AutoSize = false,
                 Height = 60
             };
+            
+            var networksPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Height = 60
+            };
+            
             _networksTextBox = new TextBox
             {
                 Multiline = true,
                 Height = 60,
-                Dock = DockStyle.Fill,
+                Width = 250,
                 ScrollBars = ScrollBars.Vertical,
-                PlaceholderText = "Enter one CIDR per line, e.g.:\n10.8.1.0/24\n10.1.0.0/16"
+                PlaceholderText = "Enter one CIDR per line, e.g.:\n10.8.1.0/24\n10.1.0.0/16",
+                Location = new System.Drawing.Point(0, 0),
+                AcceptsReturn = true
             };
             toolTip.SetToolTip(_networksTextBox, "Enter your office network ranges in CIDR notation.\nOne network per line. Example: 10.8.1.0/24\n\n* Requires application restart");
+            
+            _detectNetworkButton = new Button
+            {
+                Text = "Detect Current",
+                Width = 110,
+                Height = 25,
+                Location = new System.Drawing.Point(255, 2)
+            };
+            _detectNetworkButton.Click += DetectNetworkButton_Click;
+            toolTip.SetToolTip(_detectNetworkButton, "Automatically detect and add current network configurations");
+            
+            networksPanel.Controls.Add(_networksTextBox);
+            networksPanel.Controls.Add(_detectNetworkButton);
+            
             mainPanel.Controls.Add(networksLabel, 0, 0);
-            mainPanel.Controls.Add(_networksTextBox, 1, 0);
+            mainPanel.Controls.Add(networksPanel, 1, 0);
 
             // Poll Interval
             var pollIntervalLabel = new Label
@@ -308,6 +335,26 @@ namespace OfficeAttendanceTracker.Desktop
                     return;
                 }
 
+                // Validate CIDR format for each network
+                var invalidNetworks = new List<string>();
+                foreach (var network in networks)
+                {
+                    if (!_networkDetectionService.IsValidCidr(network))
+                    {
+                        invalidNetworks.Add(network);
+                    }
+                }
+
+                if (invalidNetworks.Count > 0)
+                {
+                    var message = "The following network(s) are not in valid CIDR format:\n\n" +
+                                  string.Join("\n", invalidNetworks) +
+                                  "\n\nExpected format: X.X.X.X/Y (e.g., 192.168.1.0/24)";
+                    MessageBox.Show(message, "Validation Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
                 // Validate file name
                 if (string.IsNullOrWhiteSpace(_dataFileNameTextBox.Text))
                 {
@@ -372,6 +419,50 @@ namespace OfficeAttendanceTracker.Desktop
                 LoadSettings();
                 MessageBox.Show("Settings have been reset to default values.\n\nClick 'Save' to apply these changes.",
                     "Settings Reset", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private void DetectNetworkButton_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                var detectedNetworks = _networkDetectionService.DetectCurrentNetworks();
+
+                if (detectedNetworks.Count == 0)
+                {
+                    MessageBox.Show("No active network connections found.\n\nPlease ensure you are connected to a network.",
+                        "No Networks Detected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Get existing networks
+                var existingNetworks = _networksTextBox.Text
+                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(n => n.Trim())
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                // Add detected networks that don't already exist
+                var newNetworks = detectedNetworks.Where(n => !existingNetworks.Contains(n)).ToList();
+
+                if (newNetworks.Count == 0)
+                {
+                    MessageBox.Show("All detected networks are already in the list.",
+                        "Network Detection", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Append new networks
+                var allNetworks = existingNetworks.Concat(newNetworks).ToList();
+                _networksTextBox.Text = string.Join(Environment.NewLine, allNetworks);
+
+                MessageBox.Show($"Added {newNetworks.Count} network(s):\n\n{string.Join("\n", newNetworks)}\n\nRemember to click 'Save' to apply the changes.",
+                    "Networks Detected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to detect networks: {ex.Message}",
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
