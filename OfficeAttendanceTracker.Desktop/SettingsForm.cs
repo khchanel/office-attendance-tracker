@@ -19,6 +19,7 @@ namespace OfficeAttendanceTracker.Desktop
         private Button _browseButton;
         private Button _saveButton;
         private Button _cancelButton;
+        private Button _resetButton;
         private Label _restartLabel;
 
         public SettingsForm(SettingsManager settingsManager)
@@ -62,7 +63,7 @@ namespace OfficeAttendanceTracker.Desktop
             // Networks
             var networksLabel = new Label
             {
-                Text = "Office Networks (CIDR):",
+                Text = "Office Networks (CIDR): *",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 AutoSize = false,
                 Height = 60
@@ -75,14 +76,14 @@ namespace OfficeAttendanceTracker.Desktop
                 ScrollBars = ScrollBars.Vertical,
                 PlaceholderText = "Enter one CIDR per line, e.g.:\n10.8.1.0/24\n10.1.0.0/16"
             };
-            toolTip.SetToolTip(_networksTextBox, "Enter your office network ranges in CIDR notation.\nOne network per line. Example: 10.8.1.0/24");
+            toolTip.SetToolTip(_networksTextBox, "Enter your office network ranges in CIDR notation.\nOne network per line. Example: 10.8.1.0/24\n\n* Requires application restart");
             mainPanel.Controls.Add(networksLabel, 0, 0);
             mainPanel.Controls.Add(_networksTextBox, 1, 0);
 
             // Poll Interval
             var pollIntervalLabel = new Label
             {
-                Text = "Poll Interval (seconds):",
+                Text = "Poll Interval (seconds): *",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill
             };
@@ -94,14 +95,14 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Left,
                 Width = 100
             };
-            toolTip.SetToolTip(_pollIntervalNumeric, "How often to check if you're on the office network.\nDefault: 1800 seconds (30 minutes)");
+            toolTip.SetToolTip(_pollIntervalNumeric, "How often to check if you're on the office network.\nDefault: 1800 seconds (30 minutes)\n\n* Requires application restart");
             mainPanel.Controls.Add(pollIntervalLabel, 0, 1);
             mainPanel.Controls.Add(_pollIntervalNumeric, 1, 1);
 
             // Enable Background Worker
             var enableWorkerLabel = new Label
             {
-                Text = "Enable Background Worker:",
+                Text = "Enable Background Worker: *",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill
             };
@@ -110,7 +111,7 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Left,
                 Width = 30
             };
-            toolTip.SetToolTip(_enableBackgroundWorkerCheckBox, "Automatically track attendance in the background");
+            toolTip.SetToolTip(_enableBackgroundWorkerCheckBox, "Automatically track attendance in the background\n\n* Requires application restart");
             mainPanel.Controls.Add(enableWorkerLabel, 0, 2);
             mainPanel.Controls.Add(_enableBackgroundWorkerCheckBox, 1, 2);
 
@@ -137,7 +138,7 @@ namespace OfficeAttendanceTracker.Desktop
             // Data File Path
             var dataFilePathLabel = new Label
             {
-                Text = "Data File Path:",
+                Text = "Data File Path: *",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill
             };
@@ -155,7 +156,7 @@ namespace OfficeAttendanceTracker.Desktop
                 Width = 250,
                 PlaceholderText = "Leave empty for default"
             };
-            toolTip.SetToolTip(_dataFilePathTextBox, "Custom path for attendance data file.\nLeave empty to use application directory");
+            toolTip.SetToolTip(_dataFilePathTextBox, "Custom path for attendance data file.\nLeave empty to use application directory\n\n* Requires application restart");
             _browseButton = new Button
             {
                 Text = "Browse...",
@@ -171,7 +172,7 @@ namespace OfficeAttendanceTracker.Desktop
             // Data File Name
             var dataFileNameLabel = new Label
             {
-                Text = "Data File Name:",
+                Text = "Data File Name: *",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill
             };
@@ -180,34 +181,61 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Left,
                 Width = 200
             };
-            toolTip.SetToolTip(_dataFileNameTextBox, "Name of the attendance file.\nSupported formats: .csv or .json");
+            toolTip.SetToolTip(_dataFileNameTextBox, "Name of the attendance file.\nSupported formats: .csv or .json\n\n* Requires application restart");
             mainPanel.Controls.Add(dataFileNameLabel, 0, 5);
             mainPanel.Controls.Add(_dataFileNameTextBox, 1, 5);
 
-            // Restart warning label
+            // Restart warning label - positioned right after settings that require restart
             _restartLabel = new Label
             {
-                Text = "? Application restart required for some changes to take effect",
+                Text = "* Application restart required for these settings to take effect",
                 ForeColor = System.Drawing.Color.DarkOrange,
                 AutoSize = true,
                 Dock = DockStyle.Fill,
-                Padding = new Padding(0, 10, 0, 10)
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+                Padding = new Padding(0, 5, 0, 10),
+                Font = new System.Drawing.Font(System.Drawing.SystemFonts.DefaultFont.FontFamily, 8.5f, System.Drawing.FontStyle.Italic)
             };
             mainPanel.SetColumnSpan(_restartLabel, 2);
             mainPanel.Controls.Add(_restartLabel, 0, 6);
 
             // Buttons
-            var buttonPanel = new FlowLayoutPanel
+            var buttonPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.RightToLeft,
-                Padding = new Padding(0, 10, 0, 0)
+                Padding = new Padding(0, 10, 0, 0),
+                Height = 40
             };
+
+            // Reset button on the left
+            _resetButton = new Button
+            {
+                Text = "Reset to Default",
+                Width = 130,
+                Height = 30,
+                Location = new System.Drawing.Point(0, 10)
+            };
+            _resetButton.Click += ResetButton_Click;
+            buttonPanel.Controls.Add(_resetButton);
+
+            // Save/Cancel buttons on the right
+            var rightButtonPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.RightToLeft,
+                Dock = DockStyle.Right,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                WrapContents = false,
+                Padding = new Padding(0)
+            };
+
             _cancelButton = new Button
             {
                 Text = "Cancel",
                 Width = 100,
-                DialogResult = DialogResult.Cancel
+                Height = 30,
+                DialogResult = DialogResult.Cancel,
+                Margin = new Padding(0, 0, 0, 0)
             };
             _cancelButton.Click += CancelButton_Click;
 
@@ -215,12 +243,15 @@ namespace OfficeAttendanceTracker.Desktop
             {
                 Text = "Save",
                 Width = 100,
-                Margin = new Padding(10, 0, 0, 0)
+                Height = 30,
+                Margin = new Padding(0, 0, 10, 0)
             };
             _saveButton.Click += SaveButton_Click;
 
-            buttonPanel.Controls.Add(_cancelButton);
-            buttonPanel.Controls.Add(_saveButton);
+            rightButtonPanel.Controls.Add(_cancelButton);
+            rightButtonPanel.Controls.Add(_saveButton);
+            buttonPanel.Controls.Add(rightButtonPanel);
+
             mainPanel.SetColumnSpan(buttonPanel, 2);
             mainPanel.Controls.Add(buttonPanel, 0, 7);
 
@@ -315,6 +346,33 @@ namespace OfficeAttendanceTracker.Desktop
         {
             this.DialogResult = DialogResult.Cancel;
             this.Close();
+        }
+
+        private void ResetButton_Click(object? sender, EventArgs e)
+        {
+            var defaults = new AppSettings();
+            
+            var message = "Are you sure you want to reset all settings to their default values?\n\nThis will restore:\n" +
+                $"- Office Networks: {string.Join(", ", defaults.Networks)}\n" +
+                $"- Poll Interval: {defaults.PollIntervalMs / 1000} seconds ({defaults.PollIntervalMs / 60000} minutes)\n" +
+                $"- Background Worker: {(defaults.EnableBackgroundWorker ? "Enabled" : "Disabled")}\n" +
+                $"- Compliance Threshold: {defaults.ComplianceThreshold * 100}%\n" +
+                $"- Data File Name: {defaults.DataFileName}\n" +
+                $"- Data File Path: {(string.IsNullOrEmpty(defaults.DataFilePath) ? "(default)" : defaults.DataFilePath)}";
+
+            var result = MessageBox.Show(
+                message,
+                "Reset to Default",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result == DialogResult.Yes)
+            {
+                _workingSettings = defaults;
+                LoadSettings();
+                MessageBox.Show("Settings have been reset to default values.\n\nClick 'Save' to apply these changes.",
+                    "Settings Reset", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
     }
 }
