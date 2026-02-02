@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using OfficeAttendanceTracker.Core;
 using OfficeAttendanceTracker.Desktop;
 using System.Windows.Forms;
@@ -34,7 +35,7 @@ try
 
     // Clear default configuration sources and add our custom settings provider
     builder.Configuration.Sources.Clear();
-    builder.Configuration.AddInMemoryCollection(); // For logging configuration if needed
+    builder.Configuration.AddInMemoryCollection();
     var settingsSource = new SettingsConfigurationSource(settingsManager);
     builder.Configuration.Sources.Add(settingsSource);
 
@@ -43,41 +44,31 @@ try
     builder.Services.AddTransient<INetworkInfoProvider, DefaultNetworkInfoProvider>();
     builder.Services.AddTransient<INetworkDetectionService, NetworkDetectionService>();
     builder.Services.AddSingleton<IDateTimeProvider, DefaultDateTimeProvider>();
-    builder.Services.AddSingleton<IAttendanceService, AttendanceService>();
+    
+    // AttendanceServiceProvider manages service lifecycle and recreation
+    builder.Services.AddSingleton<IAttendanceServiceProvider, AttendanceServiceProvider>();
 
-    var dataFileName = settingsManager.CurrentSettings.DataFileName;
-    var extension = Path.GetExtension(dataFileName).ToLowerInvariant();
-
-    builder.Services.AddSingleton<IAttendanceRecordStore>(provider =>
-    {
-        var config = provider.GetRequiredService<IConfiguration>();
-        
-        IAttendanceRecordStore store = extension switch
-        {
-            ".csv" => new AttendanceRecordCsvFileStore(config),
-            ".json" => new AttendanceRecordJsonFileStore(config),
-            _ => throw new NotSupportedException($"Unsupported file extension '{extension}'. Supported: .csv, .json")
-        };
-
-        store.Initialize();
-        
-        return store;
-    });
-
-    // Conditionally add Worker based on configuration
+    // Worker uses Func<IAttendanceService> to get current instance
     if (settingsManager.CurrentSettings.EnableBackgroundWorker)
     {
-        builder.Services.AddHostedService<Worker>();
+        builder.Services.AddHostedService(sp => 
+        {
+            var logger = sp.GetRequiredService<ILogger<Worker>>();
+            var config = sp.GetRequiredService<IConfiguration>();
+            var serviceProvider = sp.GetRequiredService<IAttendanceServiceProvider>();
+            
+            return new Worker(logger, config, () => serviceProvider.Current);
+        });
     }
 
     var host = builder.Build();
     _ = Task.Run(() => host.RunAsync());
 
     // Initialize and run Windows Forms application with system tray
-    var attendanceService = host.Services.GetRequiredService<IAttendanceService>();
+    var serviceProvider = host.Services.GetRequiredService<IAttendanceServiceProvider>();
     System.Windows.Forms.Application.EnableVisualStyles();
     System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
-    System.Windows.Forms.Application.Run(new TrayApplicationContext(host, attendanceService, settingsManager));
+    System.Windows.Forms.Application.Run(new TrayApplicationContext(host, serviceProvider, settingsManager));
 }
 catch (Exception ex)
 {

@@ -1,4 +1,4 @@
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 using OfficeAttendanceTracker.Core;
 
 namespace OfficeAttendanceTracker.Desktop
@@ -10,6 +10,7 @@ namespace OfficeAttendanceTracker.Desktop
     {
         private readonly SettingsManager _settingsManager;
         private readonly INetworkDetectionService _networkDetectionService;
+        private readonly bool _originalWorkerEnabled;
         private AppSettings _workingSettings;
 
         private TextBox _networksTextBox;
@@ -30,6 +31,7 @@ namespace OfficeAttendanceTracker.Desktop
             _settingsManager = settingsManager;
             _networkDetectionService = networkDetectionService;
             _workingSettings = _settingsManager.CurrentSettings;
+            _originalWorkerEnabled = _workingSettings.EnableBackgroundWorker;
             InitializeComponents();
             LoadSettings();
         }
@@ -67,7 +69,7 @@ namespace OfficeAttendanceTracker.Desktop
             // Networks
             var networksLabel = new Label
             {
-                Text = "Office Networks (CIDR): *",
+                Text = "Office Networks (CIDR):",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 AutoSize = false,
                 Height = 60
@@ -89,7 +91,7 @@ namespace OfficeAttendanceTracker.Desktop
                 Location = new System.Drawing.Point(0, 0),
                 AcceptsReturn = true
             };
-            toolTip.SetToolTip(_networksTextBox, "Enter your office network ranges in CIDR notation.\nOne network per line. Example: 10.8.1.0/24\n\n* Requires application restart");
+            toolTip.SetToolTip(_networksTextBox, "Enter your office network ranges in CIDR notation.\nOne network per line. Example: 10.8.1.0/24\n\nApplied immediately after save.");
             
             _detectNetworkButton = new Button
             {
@@ -110,7 +112,7 @@ namespace OfficeAttendanceTracker.Desktop
             // Poll Interval
             var pollIntervalLabel = new Label
             {
-                Text = "Poll Interval (seconds): *",
+                Text = "Poll Interval (seconds):",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill
             };
@@ -122,7 +124,7 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Left,
                 Width = 100
             };
-            toolTip.SetToolTip(_pollIntervalNumeric, "How often to check if you're on the office network.\nDefault: 1800 seconds (30 minutes)\n\n* Requires application restart");
+            toolTip.SetToolTip(_pollIntervalNumeric, "How often to check if you're on the office network.\nDefault: 1800 seconds (30 minutes)\n\nApplied immediately after save.");
             mainPanel.Controls.Add(pollIntervalLabel, 0, 1);
             mainPanel.Controls.Add(_pollIntervalNumeric, 1, 1);
 
@@ -138,7 +140,8 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Left,
                 Width = 30
             };
-            toolTip.SetToolTip(_enableBackgroundWorkerCheckBox, "Automatically track attendance in the background\n\n* Requires application restart");
+            _enableBackgroundWorkerCheckBox.CheckedChanged += (s, e) => UpdateRestartWarning();
+            toolTip.SetToolTip(_enableBackgroundWorkerCheckBox, "Automatically track attendance in the background\n\n* Restart required to enable/disable");
             mainPanel.Controls.Add(enableWorkerLabel, 0, 2);
             mainPanel.Controls.Add(_enableBackgroundWorkerCheckBox, 1, 2);
 
@@ -158,14 +161,14 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Left,
                 Width = 100
             };
-            toolTip.SetToolTip(_complianceThresholdNumeric, "Attendance percentage threshold for compliance status.\nDefault: 50%");
+            toolTip.SetToolTip(_complianceThresholdNumeric, "Attendance percentage threshold for compliance status.\nDefault: 50%\n\nApplied immediately after save.");
             mainPanel.Controls.Add(complianceLabel, 0, 3);
             mainPanel.Controls.Add(_complianceThresholdNumeric, 1, 3);
 
             // Data File Path
             var dataFilePathLabel = new Label
             {
-                Text = "Data File Path: *",
+                Text = "Data File Path:",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill
             };
@@ -183,7 +186,7 @@ namespace OfficeAttendanceTracker.Desktop
                 Width = 250,
                 PlaceholderText = "Leave empty for default"
             };
-            toolTip.SetToolTip(_dataFilePathTextBox, "Custom path for attendance data file.\nLeave empty to use user profile directory (%USERPROFILE%)\n\n* Requires application restart");
+            toolTip.SetToolTip(_dataFilePathTextBox, "Custom path for attendance data file.\nLeave empty to use user profile directory (%USERPROFILE%)\n\nApplied immediately after save.");
             _browseButton = new Button
             {
                 Text = "Browse...",
@@ -199,7 +202,7 @@ namespace OfficeAttendanceTracker.Desktop
             // Data File Name
             var dataFileNameLabel = new Label
             {
-                Text = "Data File Name: *",
+                Text = "Data File Name:",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill
             };
@@ -208,20 +211,21 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Left,
                 Width = 200
             };
-            toolTip.SetToolTip(_dataFileNameTextBox, "Name of the attendance file.\nSupported formats: .csv or .json\n\n* Requires application restart");
+            toolTip.SetToolTip(_dataFileNameTextBox, "Name of the attendance file.\nSupported formats: .csv or .json\n\nApplied immediately after save.");
             mainPanel.Controls.Add(dataFileNameLabel, 0, 5);
             mainPanel.Controls.Add(_dataFileNameTextBox, 1, 5);
 
-            // Restart warning label - positioned right after settings that require restart
+            // Restart warning label - shown only when Worker enable/disable changes
             _restartLabel = new Label
             {
-                Text = "* Application restart required for these settings to take effect",
+                Text = "⚠ Application restart required to enable/disable Background Worker",
                 ForeColor = System.Drawing.Color.DarkOrange,
                 AutoSize = true,
                 Dock = DockStyle.Fill,
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 Padding = new Padding(0, 5, 0, 10),
-                Font = new System.Drawing.Font(System.Drawing.SystemFonts.DefaultFont.FontFamily, 8.5f, System.Drawing.FontStyle.Italic)
+                Font = new System.Drawing.Font(System.Drawing.SystemFonts.DefaultFont.FontFamily, 8.5f, System.Drawing.FontStyle.Bold),
+                Visible = false
             };
             mainPanel.SetColumnSpan(_restartLabel, 2);
             mainPanel.Controls.Add(_restartLabel, 0, 6);
@@ -290,11 +294,19 @@ namespace OfficeAttendanceTracker.Desktop
         private void LoadSettings()
         {
             _networksTextBox.Text = string.Join(Environment.NewLine, _workingSettings.Networks);
-            _pollIntervalNumeric.Value = _workingSettings.PollIntervalMs / 1000; // Convert to seconds
+            _pollIntervalNumeric.Value = _workingSettings.PollIntervalMs / 1000;
             _enableBackgroundWorkerCheckBox.Checked = _workingSettings.EnableBackgroundWorker;
-            _complianceThresholdNumeric.Value = (decimal)(_workingSettings.ComplianceThreshold * 100); // Convert to percentage
+            _complianceThresholdNumeric.Value = (decimal)(_workingSettings.ComplianceThreshold * 100);
             _dataFilePathTextBox.Text = _workingSettings.DataFilePath ?? string.Empty;
             _dataFileNameTextBox.Text = _workingSettings.DataFileName;
+            
+            UpdateRestartWarning();
+        }
+
+        private void UpdateRestartWarning()
+        {
+            bool workerChanged = _enableBackgroundWorkerCheckBox.Checked != _originalWorkerEnabled;
+            _restartLabel.Visible = workerChanged;
         }
 
         private void BrowseButton_Click(object? sender, EventArgs e)
@@ -363,11 +375,14 @@ namespace OfficeAttendanceTracker.Desktop
                     return;
                 }
 
+                // Check if restart is required
+                bool requiresRestart = _enableBackgroundWorkerCheckBox.Checked != _originalWorkerEnabled;
+
                 // Update settings
                 _workingSettings.Networks = networks;
-                _workingSettings.PollIntervalMs = (int)_pollIntervalNumeric.Value * 1000; // Convert to ms
+                _workingSettings.PollIntervalMs = (int)_pollIntervalNumeric.Value * 1000;
                 _workingSettings.EnableBackgroundWorker = _enableBackgroundWorkerCheckBox.Checked;
-                _workingSettings.ComplianceThreshold = (double)_complianceThresholdNumeric.Value / 100; // Convert to decimal
+                _workingSettings.ComplianceThreshold = (double)_complianceThresholdNumeric.Value / 100;
                 _workingSettings.DataFilePath = string.IsNullOrWhiteSpace(_dataFilePathTextBox.Text)
                     ? null
                     : _dataFilePathTextBox.Text;
@@ -376,8 +391,26 @@ namespace OfficeAttendanceTracker.Desktop
                 // Save settings
                 _settingsManager.SaveSettings(_workingSettings);
 
-                MessageBox.Show("Settings saved successfully!\n\nPlease restart the application for all changes to take effect.",
-                    "Settings Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (requiresRestart)
+                {
+                    MessageBox.Show(
+                        "Settings saved successfully!\n\n" +
+                        "⚠ Application restart required because:\n" +
+                        "- Background Worker was enabled/disabled\n\n" +
+                        "All other settings have been applied immediately.",
+                        "Settings Saved - Restart Required",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                }
+                else
+                {
+                    MessageBox.Show(
+                        "Settings saved and applied immediately!\n\n" +
+                        "All changes are now active without requiring a restart.",
+                        "Settings Saved",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
 
                 this.DialogResult = DialogResult.OK;
                 this.Close();
