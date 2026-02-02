@@ -15,11 +15,41 @@ Automatically track your office attendance by detecting your presence on configu
 - **Visual Feedback** - Color-coded compliance status in system tray
 - **Minimal Resource Usage** - Lightweight and efficient
 
+
+## Screenshots
+
+<details>
+<summary>Desktop UI [click to expand]</summary>
+
+**System Tray Icon:**
+![System Tray Icon](./docs/screenshots/Screenshot-3.png)
+
+**Settings Dialog:**
+![Settings UI](./docs/screenshots/Screenshot-SettingsUI.png)
+
+</details>
+
+
+## Building from Source
+
+```bash
+# Build all projects
+dotnet build
+
+# Publish Desktop
+dotnet publish OfficeAttendanceTracker.Desktop -c Release -o ./publish/desktop
+
+# Publish Service
+dotnet publish OfficeAttendanceTracker.Service -c Release -o ./publish/service
+```
+
+
 ## Quick Start
 
 ### Prerequisites
 - .NET 8 Runtime
 - Windows OS
+- Unix-like OS (Service mode only)
 
 ### Desktop App (Recommended)
 
@@ -29,7 +59,7 @@ Automatically track your office attendance by detecting your presence on configu
 
 ### Windows Service
 
-1. Install: `sc create "OfficeAttendanceTracker" binPath="path\to\OfficeAttendanceTracker.Service.exe"`
+1. Install: `sc create "OfficeAttendanceTracker" binPath= "path\to\OfficeAttendanceTracker.Service.exe"`
 2. Edit `appsettings.json` to configure networks
 3. Start: `sc start "OfficeAttendanceTracker"`
 
@@ -37,7 +67,7 @@ Automatically track your office attendance by detecting your presence on configu
 
 ### Desktop App
 - Managed through UI (right-click tray icon → Settings)
-- Settings stored in `user-settings.json`
+- Settings stored in `user-settings.json` in application folder
 - Data saved to `%USERPROFILE%\attendance.csv` by default
 
 ### Windows Service
@@ -52,32 +82,6 @@ Automatically track your office attendance by detecting your presence on configu
   "PollIntervalMs": 1800000,
   "ComplianceThreshold": 0.5
 }
-```
-
-## Screenshots
-
-<details>
-<summary>Desktop UI</summary>
-
-**System Tray Icon:**
-![System Tray Icon](./docs/screenshots/Screenshot-3.png)
-
-**Settings Dialog:**
-![Settings UI](./docs/screenshots/Screenshot-SettingsUI.png)
-
-</details>
-
-## Building from Source
-
-```bash
-# Build all projects
-dotnet build
-
-# Publish Desktop
-dotnet publish OfficeAttendanceTracker.Desktop -c Release -o ./publish/desktop
-
-# Publish Service
-dotnet publish OfficeAttendanceTracker.Service -c Release -o ./publish/service
 ```
 
 ## How It Works
