@@ -1,8 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OfficeAttendanceTracker.Core;
 
-namespace OfficeAttendanceTracker.Core
+namespace OfficeAttendanceTracker.Service
 {
     public class Worker : BackgroundService
     {
@@ -13,13 +14,13 @@ namespace OfficeAttendanceTracker.Core
         public Worker(ILogger<Worker> logger, IConfiguration config, IAttendanceService attendanceService)
         {
             _logger = logger;
-            _pollIntervalMs = config.GetValue("PollIntervalMs", 10000);
+            _pollIntervalMs = config.GetValue("PollIntervalMs", 1800000);
             _attendanceService = attendanceService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            if (_logger.IsEnabled(LogLevel.Information)) 
+            if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("Worker started. Polling interval is: {Interval}ms", _pollIntervalMs);
 
             while (!stoppingToken.IsCancellationRequested)
@@ -35,7 +36,6 @@ namespace OfficeAttendanceTracker.Core
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     _logger.LogError(ex, "Error in Worker execution");
-                    // Continue running even if there's an error
                     await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
                 }
             }

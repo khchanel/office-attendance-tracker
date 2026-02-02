@@ -1,4 +1,5 @@
 using OfficeAttendanceTracker.Core;
+using OfficeAttendanceTracker.Service;
 
 var builder = Host.CreateApplicationBuilder(args);
 

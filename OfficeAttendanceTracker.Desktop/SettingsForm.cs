@@ -1,4 +1,4 @@
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 using OfficeAttendanceTracker.Core;
 
 namespace OfficeAttendanceTracker.Desktop
@@ -12,18 +12,17 @@ namespace OfficeAttendanceTracker.Desktop
         private readonly INetworkDetectionService _networkDetectionService;
         private AppSettings _workingSettings;
 
-        private TextBox _networksTextBox;
-        private Button _detectNetworkButton;
-        private NumericUpDown _pollIntervalNumeric;
-        private CheckBox _enableBackgroundWorkerCheckBox;
-        private NumericUpDown _complianceThresholdNumeric;
-        private TextBox _dataFilePathTextBox;
-        private TextBox _dataFileNameTextBox;
-        private Button _browseButton;
-        private Button _saveButton;
-        private Button _cancelButton;
-        private Button _resetButton;
-        private Label _restartLabel;
+        private TextBox _networksTextBox = null!;
+        private Button _detectNetworkButton = null!;
+        private NumericUpDown _pollIntervalNumeric = null!;
+        private CheckBox _enableBackgroundWorkerCheckBox = null!;
+        private NumericUpDown _complianceThresholdNumeric = null!;
+        private TextBox _dataFilePathTextBox = null!;
+        private TextBox _dataFileNameTextBox = null!;
+        private Button _browseButton = null!;
+        private Button _saveButton = null!;
+        private Button _cancelButton = null!;
+        private Button _resetButton = null!;
 
         public SettingsForm(SettingsManager settingsManager, INetworkDetectionService networkDetectionService)
         {
@@ -67,7 +66,7 @@ namespace OfficeAttendanceTracker.Desktop
             // Networks
             var networksLabel = new Label
             {
-                Text = "Office Networks (CIDR): *",
+                Text = "Office Networks (CIDR):",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 AutoSize = false,
                 Height = 60
@@ -89,7 +88,7 @@ namespace OfficeAttendanceTracker.Desktop
                 Location = new System.Drawing.Point(0, 0),
                 AcceptsReturn = true
             };
-            toolTip.SetToolTip(_networksTextBox, "Enter your office network ranges in CIDR notation.\nOne network per line. Example: 10.8.1.0/24\n\n* Requires application restart");
+            toolTip.SetToolTip(_networksTextBox, "Enter your office network ranges in CIDR notation.\nOne network per line. Example: 10.8.1.0/24\n\nApplied immediately after save.");
             
             _detectNetworkButton = new Button
             {
@@ -110,7 +109,7 @@ namespace OfficeAttendanceTracker.Desktop
             // Poll Interval
             var pollIntervalLabel = new Label
             {
-                Text = "Poll Interval (seconds): *",
+                Text = "Poll Interval (seconds):",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill
             };
@@ -122,14 +121,14 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Left,
                 Width = 100
             };
-            toolTip.SetToolTip(_pollIntervalNumeric, "How often to check if you're on the office network.\nDefault: 1800 seconds (30 minutes)\n\n* Requires application restart");
+            toolTip.SetToolTip(_pollIntervalNumeric, "How often to check if you're on the office network.\nDefault: 1800 seconds (30 minutes)\n\nApplied immediately after save.");
             mainPanel.Controls.Add(pollIntervalLabel, 0, 1);
             mainPanel.Controls.Add(_pollIntervalNumeric, 1, 1);
 
-            // Enable Background Worker
+            // Enable Automatic Tracking
             var enableWorkerLabel = new Label
             {
-                Text = "Enable Background Worker: *",
+                Text = "Enable Automatic Tracking:",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill
             };
@@ -138,7 +137,7 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Left,
                 Width = 30
             };
-            toolTip.SetToolTip(_enableBackgroundWorkerCheckBox, "Automatically track attendance in the background\n\n* Requires application restart");
+            toolTip.SetToolTip(_enableBackgroundWorkerCheckBox, "Automatically track attendance in the background\n\nApplied immediately after save.");
             mainPanel.Controls.Add(enableWorkerLabel, 0, 2);
             mainPanel.Controls.Add(_enableBackgroundWorkerCheckBox, 1, 2);
 
@@ -158,14 +157,14 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Left,
                 Width = 100
             };
-            toolTip.SetToolTip(_complianceThresholdNumeric, "Attendance percentage threshold for compliance status.\nDefault: 50%");
+            toolTip.SetToolTip(_complianceThresholdNumeric, "Attendance percentage threshold for compliance status.\nDefault: 50%\n\nApplied immediately after save.");
             mainPanel.Controls.Add(complianceLabel, 0, 3);
             mainPanel.Controls.Add(_complianceThresholdNumeric, 1, 3);
 
             // Data File Path
             var dataFilePathLabel = new Label
             {
-                Text = "Data File Path: *",
+                Text = "Data File Path:",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill
             };
@@ -183,7 +182,7 @@ namespace OfficeAttendanceTracker.Desktop
                 Width = 250,
                 PlaceholderText = "Leave empty for default"
             };
-            toolTip.SetToolTip(_dataFilePathTextBox, "Custom path for attendance data file.\nLeave empty to use user profile directory (%USERPROFILE%)\n\n* Requires application restart");
+            toolTip.SetToolTip(_dataFilePathTextBox, "Custom path for attendance data file.\nLeave empty to use user profile directory (%USERPROFILE%)\n\nApplied immediately after save.");
             _browseButton = new Button
             {
                 Text = "Browse...",
@@ -199,7 +198,7 @@ namespace OfficeAttendanceTracker.Desktop
             // Data File Name
             var dataFileNameLabel = new Label
             {
-                Text = "Data File Name: *",
+                Text = "Data File Name:",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill
             };
@@ -208,23 +207,9 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Left,
                 Width = 200
             };
-            toolTip.SetToolTip(_dataFileNameTextBox, "Name of the attendance file.\nSupported formats: .csv or .json\n\n* Requires application restart");
+            toolTip.SetToolTip(_dataFileNameTextBox, "Name of the attendance file.\nSupported formats: .csv or .json\n\nApplied immediately after save.");
             mainPanel.Controls.Add(dataFileNameLabel, 0, 5);
             mainPanel.Controls.Add(_dataFileNameTextBox, 1, 5);
-
-            // Restart warning label - positioned right after settings that require restart
-            _restartLabel = new Label
-            {
-                Text = "* Application restart required for these settings to take effect",
-                ForeColor = System.Drawing.Color.DarkOrange,
-                AutoSize = true,
-                Dock = DockStyle.Fill,
-                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-                Padding = new Padding(0, 5, 0, 10),
-                Font = new System.Drawing.Font(System.Drawing.SystemFonts.DefaultFont.FontFamily, 8.5f, System.Drawing.FontStyle.Italic)
-            };
-            mainPanel.SetColumnSpan(_restartLabel, 2);
-            mainPanel.Controls.Add(_restartLabel, 0, 6);
 
             // Buttons
             var buttonPanel = new Panel
@@ -290,9 +275,9 @@ namespace OfficeAttendanceTracker.Desktop
         private void LoadSettings()
         {
             _networksTextBox.Text = string.Join(Environment.NewLine, _workingSettings.Networks);
-            _pollIntervalNumeric.Value = _workingSettings.PollIntervalMs / 1000; // Convert to seconds
+            _pollIntervalNumeric.Value = _workingSettings.PollIntervalMs / 1000;
             _enableBackgroundWorkerCheckBox.Checked = _workingSettings.EnableBackgroundWorker;
-            _complianceThresholdNumeric.Value = (decimal)(_workingSettings.ComplianceThreshold * 100); // Convert to percentage
+            _complianceThresholdNumeric.Value = (decimal)(_workingSettings.ComplianceThreshold * 100);
             _dataFilePathTextBox.Text = _workingSettings.DataFilePath ?? string.Empty;
             _dataFileNameTextBox.Text = _workingSettings.DataFileName;
         }
@@ -365,9 +350,9 @@ namespace OfficeAttendanceTracker.Desktop
 
                 // Update settings
                 _workingSettings.Networks = networks;
-                _workingSettings.PollIntervalMs = (int)_pollIntervalNumeric.Value * 1000; // Convert to ms
+                _workingSettings.PollIntervalMs = (int)_pollIntervalNumeric.Value * 1000;
                 _workingSettings.EnableBackgroundWorker = _enableBackgroundWorkerCheckBox.Checked;
-                _workingSettings.ComplianceThreshold = (double)_complianceThresholdNumeric.Value / 100; // Convert to decimal
+                _workingSettings.ComplianceThreshold = (double)_complianceThresholdNumeric.Value / 100;
                 _workingSettings.DataFilePath = string.IsNullOrWhiteSpace(_dataFilePathTextBox.Text)
                     ? null
                     : _dataFilePathTextBox.Text;
@@ -376,8 +361,11 @@ namespace OfficeAttendanceTracker.Desktop
                 // Save settings
                 _settingsManager.SaveSettings(_workingSettings);
 
-                MessageBox.Show("Settings saved successfully!\n\nPlease restart the application for all changes to take effect.",
-                    "Settings Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "Settings saved and applied immediately!\n\n",
+                    "Settings Saved",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.None);
 
                 this.DialogResult = DialogResult.OK;
                 this.Close();
@@ -418,7 +406,7 @@ namespace OfficeAttendanceTracker.Desktop
                 _workingSettings = defaults;
                 LoadSettings();
                 MessageBox.Show("Settings have been reset to default values.\n\nClick 'Save' to apply these changes.",
-                    "Settings Reset", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    "Settings Reset", MessageBoxButtons.OK, MessageBoxIcon.None);
             }
         }
 
@@ -431,7 +419,7 @@ namespace OfficeAttendanceTracker.Desktop
                 if (detectedNetworks.Count == 0)
                 {
                     MessageBox.Show("No active network connections found.\n\nPlease ensure you are connected to a network.",
-                        "No Networks Detected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        "No Networks Detected", MessageBoxButtons.OK, MessageBoxIcon.None);
                     return;
                 }
 
@@ -448,7 +436,7 @@ namespace OfficeAttendanceTracker.Desktop
                 if (newNetworks.Count == 0)
                 {
                     MessageBox.Show("All detected networks are already in the list.",
-                        "Network Detection", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        "Network Detection", MessageBoxButtons.OK, MessageBoxIcon.None);
                     return;
                 }
 
@@ -457,7 +445,7 @@ namespace OfficeAttendanceTracker.Desktop
                 _networksTextBox.Text = string.Join(Environment.NewLine, allNetworks);
 
                 MessageBox.Show($"Added {newNetworks.Count} network(s):\n\n{string.Join("\n", newNetworks)}\n\nRemember to click 'Save' to apply the changes.",
-                    "Networks Detected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    "Networks Detected", MessageBoxButtons.OK, MessageBoxIcon.None);
             }
             catch (Exception ex)
             {
