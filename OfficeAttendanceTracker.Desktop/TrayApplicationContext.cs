@@ -16,7 +16,11 @@ namespace OfficeAttendanceTracker.Desktop
         private readonly IAttendanceServiceProvider _serviceProvider;
         private readonly SettingsManager _settingsManager;
         private readonly System.Windows.Forms.Timer _updateTimer;
+        private SettingsForm? _settingsForm;
 
+        /// <summary>
+        /// Gets the current AttendanceService instance (may be recreated on settings change)
+        /// </summary>
         private IAttendanceService AttendanceService => _serviceProvider.Current;
 
 
@@ -225,9 +229,22 @@ namespace OfficeAttendanceTracker.Desktop
 
         private void OnSettings(object? sender, EventArgs e)
         {
+            // If settings form is already open, bring it to front
+            if (_settingsForm != null && !_settingsForm.IsDisposed)
+            {
+                _settingsForm.Activate();
+                _settingsForm.BringToFront();
+                return;
+            }
+
+            // Create new settings form
             var networkDetectionService = _host.Services.GetRequiredService<INetworkDetectionService>();
-            using var settingsForm = new SettingsForm(_settingsManager, networkDetectionService);
-            settingsForm.ShowDialog();
+            _settingsForm = new SettingsForm(_settingsManager, networkDetectionService);
+            
+            // Clear reference when form is closed
+            _settingsForm.FormClosed += (s, args) => _settingsForm = null;
+            
+            _settingsForm.ShowDialog();
         }
 
         private void OnSettingsChanged(object? sender, AppSettings settings)
