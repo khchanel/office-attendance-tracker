@@ -16,7 +16,6 @@ namespace OfficeAttendanceTracker.Desktop
         private readonly IAttendanceServiceProvider _serviceProvider;
         private readonly SettingsManager _settingsManager;
         private readonly System.Windows.Forms.Timer _updateTimer;
-        private readonly Worker? _worker;
 
         private IAttendanceService AttendanceService => _serviceProvider.Current;
 
@@ -48,20 +47,21 @@ namespace OfficeAttendanceTracker.Desktop
             };
             _trayIcon.ShowBalloonTip(2000, AppName, "Application started and running in the system tray.", ToolTipIcon.Info);
 
-            // Update timer using PollIntervalMs from settings
+            // Timer for periodic attendance check and UI update
             var pollIntervalMs = _settingsManager.CurrentSettings.PollIntervalMs;
             _updateTimer = new System.Windows.Forms.Timer();
             _updateTimer.Interval = pollIntervalMs;
             _updateTimer.Tick += (s, e) => UpdateAttendanceCount();
             
-            // Get Worker instance if enabled
-            _worker = _host.Services.GetServices<IHostedService>().OfType<Worker>().FirstOrDefault();
-            
             // Subscribe to service recreation and settings changes
             _serviceProvider.ServiceRecreated += OnServiceRecreated;
             _settingsManager.SettingsChanged += OnSettingsChanged;
             
-            _updateTimer.Start();
+            // Start timer if background worker is enabled
+            if (_settingsManager.CurrentSettings.EnableBackgroundWorker)
+            {
+                _updateTimer.Start();
+            }
 
             UpdateAttendanceCount();
 
@@ -172,7 +172,7 @@ namespace OfficeAttendanceTracker.Desktop
                 // Reload from disk to get latest persisted data
                 service.Reload();
                 
-                // Immediately take attendance (don't wait for Worker's next cycle)
+                // Immediately take attendance
                 var isInOffice = service.TakeAttendance();
                 
                 var count = service.GetCurrentMonthAttendance();
@@ -235,13 +235,24 @@ namespace OfficeAttendanceTracker.Desktop
             // Update timer interval if changed
             if (_updateTimer.Interval != settings.PollIntervalMs)
             {
+                bool wasRunning = _updateTimer.Enabled;
                 _updateTimer.Stop();
                 _updateTimer.Interval = settings.PollIntervalMs;
-                _updateTimer.Start();
+                if (wasRunning)
+                {
+                    _updateTimer.Start();
+                }
             }
             
-            // Update Worker interval if Worker is enabled
-            _worker?.UpdateInterval(settings.PollIntervalMs);
+            // Enable/disable automatic tracking immediately
+            if (settings.EnableBackgroundWorker && !_updateTimer.Enabled)
+            {
+                _updateTimer.Start();
+            }
+            else if (!settings.EnableBackgroundWorker && _updateTimer.Enabled)
+            {
+                _updateTimer.Stop();
+            }
         }
 
         private void OnExit(object? sender, EventArgs e)

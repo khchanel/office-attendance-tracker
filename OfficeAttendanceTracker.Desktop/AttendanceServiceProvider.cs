@@ -5,7 +5,7 @@ using OfficeAttendanceTracker.Core;
 namespace OfficeAttendanceTracker.Desktop
 {
     /// <summary>
-    /// Creates and manages IAttendanceService instances based on configuration changes
+    /// Manages IAttendanceService instance lifecycle based on configuration changes
     /// </summary>
     public class AttendanceServiceProvider : IAttendanceServiceProvider, IDisposable
     {

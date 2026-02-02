@@ -10,7 +10,6 @@ namespace OfficeAttendanceTracker.Desktop
     {
         private readonly SettingsManager _settingsManager;
         private readonly INetworkDetectionService _networkDetectionService;
-        private readonly bool _originalWorkerEnabled;
         private AppSettings _workingSettings;
 
         private TextBox _networksTextBox;
@@ -31,7 +30,6 @@ namespace OfficeAttendanceTracker.Desktop
             _settingsManager = settingsManager;
             _networkDetectionService = networkDetectionService;
             _workingSettings = _settingsManager.CurrentSettings;
-            _originalWorkerEnabled = _workingSettings.EnableBackgroundWorker;
             InitializeComponents();
             LoadSettings();
         }
@@ -128,10 +126,10 @@ namespace OfficeAttendanceTracker.Desktop
             mainPanel.Controls.Add(pollIntervalLabel, 0, 1);
             mainPanel.Controls.Add(_pollIntervalNumeric, 1, 1);
 
-            // Enable Background Worker
+            // Enable Automatic Tracking
             var enableWorkerLabel = new Label
             {
-                Text = "Enable Background Worker: *",
+                Text = "Enable Automatic Tracking:",
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill
             };
@@ -140,8 +138,7 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Left,
                 Width = 30
             };
-            _enableBackgroundWorkerCheckBox.CheckedChanged += (s, e) => UpdateRestartWarning();
-            toolTip.SetToolTip(_enableBackgroundWorkerCheckBox, "Automatically track attendance in the background\n\n* Restart required to enable/disable");
+            toolTip.SetToolTip(_enableBackgroundWorkerCheckBox, "Automatically track attendance in the background\n\nApplied immediately after save.");
             mainPanel.Controls.Add(enableWorkerLabel, 0, 2);
             mainPanel.Controls.Add(_enableBackgroundWorkerCheckBox, 1, 2);
 
@@ -215,21 +212,6 @@ namespace OfficeAttendanceTracker.Desktop
             mainPanel.Controls.Add(dataFileNameLabel, 0, 5);
             mainPanel.Controls.Add(_dataFileNameTextBox, 1, 5);
 
-            // Restart warning label - shown only when Worker enable/disable changes
-            _restartLabel = new Label
-            {
-                Text = "⚠ Application restart required to enable/disable Background Worker",
-                ForeColor = System.Drawing.Color.DarkOrange,
-                AutoSize = true,
-                Dock = DockStyle.Fill,
-                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-                Padding = new Padding(0, 5, 0, 10),
-                Font = new System.Drawing.Font(System.Drawing.SystemFonts.DefaultFont.FontFamily, 8.5f, System.Drawing.FontStyle.Bold),
-                Visible = false
-            };
-            mainPanel.SetColumnSpan(_restartLabel, 2);
-            mainPanel.Controls.Add(_restartLabel, 0, 6);
-
             // Buttons
             var buttonPanel = new Panel
             {
@@ -299,14 +281,6 @@ namespace OfficeAttendanceTracker.Desktop
             _complianceThresholdNumeric.Value = (decimal)(_workingSettings.ComplianceThreshold * 100);
             _dataFilePathTextBox.Text = _workingSettings.DataFilePath ?? string.Empty;
             _dataFileNameTextBox.Text = _workingSettings.DataFileName;
-            
-            UpdateRestartWarning();
-        }
-
-        private void UpdateRestartWarning()
-        {
-            bool workerChanged = _enableBackgroundWorkerCheckBox.Checked != _originalWorkerEnabled;
-            _restartLabel.Visible = workerChanged;
         }
 
         private void BrowseButton_Click(object? sender, EventArgs e)
@@ -375,9 +349,6 @@ namespace OfficeAttendanceTracker.Desktop
                     return;
                 }
 
-                // Check if restart is required
-                bool requiresRestart = _enableBackgroundWorkerCheckBox.Checked != _originalWorkerEnabled;
-
                 // Update settings
                 _workingSettings.Networks = networks;
                 _workingSettings.PollIntervalMs = (int)_pollIntervalNumeric.Value * 1000;
@@ -391,26 +362,11 @@ namespace OfficeAttendanceTracker.Desktop
                 // Save settings
                 _settingsManager.SaveSettings(_workingSettings);
 
-                if (requiresRestart)
-                {
-                    MessageBox.Show(
-                        "Settings saved successfully!\n\n" +
-                        "⚠ Application restart required because:\n" +
-                        "- Background Worker was enabled/disabled\n\n" +
-                        "All other settings have been applied immediately.",
-                        "Settings Saved - Restart Required",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Warning);
-                }
-                else
-                {
-                    MessageBox.Show(
-                        "Settings saved and applied immediately!\n\n" +
-                        "All changes are now active without requiring a restart.",
-                        "Settings Saved",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
-                }
+                MessageBox.Show(
+                    "Settings saved and applied immediately!\n\n",
+                    "Settings Saved",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.None);
 
                 this.DialogResult = DialogResult.OK;
                 this.Close();

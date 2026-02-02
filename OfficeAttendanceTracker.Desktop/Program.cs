@@ -48,19 +48,6 @@ try
     // AttendanceServiceProvider manages service lifecycle and recreation
     builder.Services.AddSingleton<IAttendanceServiceProvider, AttendanceServiceProvider>();
 
-    // Worker uses Func<IAttendanceService> to get current instance
-    if (settingsManager.CurrentSettings.EnableBackgroundWorker)
-    {
-        builder.Services.AddHostedService(sp => 
-        {
-            var logger = sp.GetRequiredService<ILogger<Worker>>();
-            var config = sp.GetRequiredService<IConfiguration>();
-            var serviceProvider = sp.GetRequiredService<IAttendanceServiceProvider>();
-            
-            return new Worker(logger, config, () => serviceProvider.Current);
-        });
-    }
-
     var host = builder.Build();
     _ = Task.Run(() => host.RunAsync());
 

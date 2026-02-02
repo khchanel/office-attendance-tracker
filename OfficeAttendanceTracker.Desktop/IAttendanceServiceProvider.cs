@@ -3,7 +3,7 @@ using OfficeAttendanceTracker.Core;
 namespace OfficeAttendanceTracker.Desktop
 {
     /// <summary>
-    /// Provides access to the current IAttendanceService instance
+    /// Manage AttendanceService instances lifecycle
     /// </summary>
     public interface IAttendanceServiceProvider
     {
