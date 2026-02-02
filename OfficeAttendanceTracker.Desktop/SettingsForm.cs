@@ -407,7 +407,7 @@ namespace OfficeAttendanceTracker.Desktop
                 _workingSettings = defaults;
                 LoadSettings();
                 MessageBox.Show("Settings have been reset to default values.\n\nClick 'Save' to apply these changes.",
-                    "Settings Reset", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    "Settings Reset", MessageBoxButtons.OK, MessageBoxIcon.None);
             }
         }
 
@@ -420,7 +420,7 @@ namespace OfficeAttendanceTracker.Desktop
                 if (detectedNetworks.Count == 0)
                 {
                     MessageBox.Show("No active network connections found.\n\nPlease ensure you are connected to a network.",
-                        "No Networks Detected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        "No Networks Detected", MessageBoxButtons.OK, MessageBoxIcon.None);
                     return;
                 }
 
@@ -437,7 +437,7 @@ namespace OfficeAttendanceTracker.Desktop
                 if (newNetworks.Count == 0)
                 {
                     MessageBox.Show("All detected networks are already in the list.",
-                        "Network Detection", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        "Network Detection", MessageBoxButtons.OK, MessageBoxIcon.None);
                     return;
                 }
 
@@ -446,7 +446,7 @@ namespace OfficeAttendanceTracker.Desktop
                 _networksTextBox.Text = string.Join(Environment.NewLine, allNetworks);
 
                 MessageBox.Show($"Added {newNetworks.Count} network(s):\n\n{string.Join("\n", newNetworks)}\n\nRemember to click 'Save' to apply the changes.",
-                    "Networks Detected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    "Networks Detected", MessageBoxButtons.OK, MessageBoxIcon.None);
             }
             catch (Exception ex)
             {
