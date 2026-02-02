@@ -103,7 +103,7 @@ namespace OfficeAttendanceTracker.Test
             
             var config = BuildConfig(invalidConfig);
             
-            var exception = Assert.ThrowsException<ArgumentException>(() => 
+            var exception = Assert.ThrowsExactly<ArgumentException>(() => 
                 new AttendanceService(_loggerMock.Object, config, _networkProviderMock.Object, _storeMock.Object));
             
             Assert.IsTrue(exception.Message.Contains("invalid-cidr"));

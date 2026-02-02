@@ -12,18 +12,17 @@ namespace OfficeAttendanceTracker.Desktop
         private readonly INetworkDetectionService _networkDetectionService;
         private AppSettings _workingSettings;
 
-        private TextBox _networksTextBox;
-        private Button _detectNetworkButton;
-        private NumericUpDown _pollIntervalNumeric;
-        private CheckBox _enableBackgroundWorkerCheckBox;
-        private NumericUpDown _complianceThresholdNumeric;
-        private TextBox _dataFilePathTextBox;
-        private TextBox _dataFileNameTextBox;
-        private Button _browseButton;
-        private Button _saveButton;
-        private Button _cancelButton;
-        private Button _resetButton;
-        private Label _restartLabel;
+        private TextBox _networksTextBox = null!;
+        private Button _detectNetworkButton = null!;
+        private NumericUpDown _pollIntervalNumeric = null!;
+        private CheckBox _enableBackgroundWorkerCheckBox = null!;
+        private NumericUpDown _complianceThresholdNumeric = null!;
+        private TextBox _dataFilePathTextBox = null!;
+        private TextBox _dataFileNameTextBox = null!;
+        private Button _browseButton = null!;
+        private Button _saveButton = null!;
+        private Button _cancelButton = null!;
+        private Button _resetButton = null!;
 
         public SettingsForm(SettingsManager settingsManager, INetworkDetectionService networkDetectionService)
         {
