@@ -9,7 +9,7 @@ namespace OfficeAttendanceTracker.Desktop
 {
     public class TrayApplicationContext : ApplicationContext
     {
-        private const string AppName = "Office Attendance Tracker";
+        internal const string AppName = "Office Attendance Tracker";
 
         private readonly NotifyIcon _trayIcon;
         private readonly IHost _host;

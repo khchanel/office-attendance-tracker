@@ -25,6 +25,9 @@ namespace OfficeAttendanceTracker.Core
         [JsonPropertyName("dataFileName")]
         public string DataFileName { get; set; } = "attendance.csv";
 
+        [JsonPropertyName("startWithWindows")]
+        public bool StartWithWindows { get; set; } = false;
+
         /// <summary>
         /// Creates default settings for Desktop application
         /// </summary>
@@ -59,7 +62,8 @@ namespace OfficeAttendanceTracker.Core
                 EnableBackgroundWorker = EnableBackgroundWorker,
                 ComplianceThreshold = ComplianceThreshold,
                 DataFilePath = DataFilePath,
-                DataFileName = DataFileName
+                DataFileName = DataFileName,
+                StartWithWindows = StartWithWindows
             };
         }
     }

@@ -88,7 +88,7 @@ dotnet publish OfficeAttendanceTracker.Service -c Release -o ./publish/service
 
 1. Monitors your network connection at configured intervals
 2. Checks if you're on an office network (via CIDR matching)
-3. Records attendance if detected on office network
+3. Records attendance to file if detected on office network
 4. Provides visual feedback (Desktop) or logs silently (Service)
 
 ## FAQ
@@ -104,6 +104,17 @@ A: Desktop: User profile directory. Service: Application directory. Both customi
 
 **Q: What's the difference between Desktop and Service?**  
 A: Desktop has GUI and runs per-user. Service runs system-wide in background.
+
+**Q: Status icon colours?**  
+A:
+
+| Colour | Status Description                                                    |
+|--------|-----------------------------------------------------------------------|
+| Green  | Compliant for the rest of the month                                   |
+| Blue   | Compliant so far as of today                                          |
+| Orange | Non-compliant so far but its still possible to meet target            |
+| Red    | Non-compliant for the rest of the month                               |
+
 
 ## Contributing
 
