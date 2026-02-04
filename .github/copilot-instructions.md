@@ -8,6 +8,8 @@
 - Focus on the specific problem at hand
 - Use code examples instead of lengthy descriptions
 - Avoid using emojis in code as it affect readability and compatibility
+- Prioritize clarity over brevity when necessary
+- avoid over-engineering solutions, KISS and YAGNI principles apply
 
 ### Problem-Solving Approach
 1. **Identify Root Cause**: Consider what might be causing the issue before suggesting fixes
