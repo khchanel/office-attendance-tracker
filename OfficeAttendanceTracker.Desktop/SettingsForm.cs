@@ -294,15 +294,7 @@ namespace OfficeAttendanceTracker.Desktop
             _networksTextBox.Text = string.Join(Environment.NewLine, _workingSettings.Networks);
             _pollIntervalNumeric.Value = _workingSettings.PollIntervalMs / 1000;
             _enableBackgroundWorkerCheckBox.Checked = _workingSettings.EnableBackgroundWorker;
-            
-            // Synchronize with actual registry state
-            var actualStartupState = _settingsManager.IsStartupEnabled();
-            if (actualStartupState != _workingSettings.StartWithWindows)
-            {
-                _workingSettings.StartWithWindows = actualStartupState;
-            }
             _startWithWindowsCheckBox.Checked = _workingSettings.StartWithWindows;
-            
             _complianceThresholdNumeric.Value = (decimal)(_workingSettings.ComplianceThreshold * 100);
             _dataFilePathTextBox.Text = _workingSettings.DataFilePath ?? string.Empty;
             _dataFileNameTextBox.Text = _workingSettings.DataFileName;
