@@ -16,18 +16,15 @@ Automatically track your office attendance by detecting your presence on configu
 - **Minimal Resource Usage** - Lightweight and efficient
 
 
-## Screenshots
+## Screenshots - Desktop UI
 
-<details>
-<summary>Desktop UI [click to expand]</summary>
 
-**System Tray Icon:**
-![System Tray Icon](./docs/screenshots/Screenshot-3.png)
+**System Tray Icon:**  
+![System Tray Icon](./docs/screenshots/Screenshot-tray.png)
 
-**Settings Dialog:**
+**Settings:**  
 ![Settings UI](./docs/screenshots/Screenshot-SettingsUI.png)
 
-</details>
 
 
 ## Building from Source
