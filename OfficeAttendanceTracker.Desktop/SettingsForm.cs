@@ -16,6 +16,7 @@ namespace OfficeAttendanceTracker.Desktop
         private Button _detectNetworkButton = null!;
         private NumericUpDown _pollIntervalNumeric = null!;
         private CheckBox _enableBackgroundWorkerCheckBox = null!;
+        private CheckBox _startWithWindowsCheckBox = null!;
         private NumericUpDown _complianceThresholdNumeric = null!;
         private TextBox _dataFilePathTextBox = null!;
         private TextBox _dataFileNameTextBox = null!;
@@ -56,7 +57,7 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Fill,
                 Padding = new Padding(15),
                 ColumnCount = 2,
-                RowCount = 8,
+                RowCount = 9,
                 AutoSize = true
             };
 
@@ -141,6 +142,22 @@ namespace OfficeAttendanceTracker.Desktop
             mainPanel.Controls.Add(enableWorkerLabel, 0, 2);
             mainPanel.Controls.Add(_enableBackgroundWorkerCheckBox, 1, 2);
 
+            // Start with Windows
+            var startWithWindowsLabel = new Label
+            {
+                Text = "Start with Windows:",
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+                Dock = DockStyle.Fill
+            };
+            _startWithWindowsCheckBox = new CheckBox
+            {
+                Dock = DockStyle.Left,
+                Width = 30
+            };
+            toolTip.SetToolTip(_startWithWindowsCheckBox, "Launch Office Attendance Tracker automatically when you log in to Windows\n\nApplied immediately after save.");
+            mainPanel.Controls.Add(startWithWindowsLabel, 0, 3);
+            mainPanel.Controls.Add(_startWithWindowsCheckBox, 1, 3);
+
             // Compliance Threshold
             var complianceLabel = new Label
             {
@@ -158,8 +175,8 @@ namespace OfficeAttendanceTracker.Desktop
                 Width = 100
             };
             toolTip.SetToolTip(_complianceThresholdNumeric, "Attendance percentage threshold for compliance status.\nDefault: 50%\n\nApplied immediately after save.");
-            mainPanel.Controls.Add(complianceLabel, 0, 3);
-            mainPanel.Controls.Add(_complianceThresholdNumeric, 1, 3);
+            mainPanel.Controls.Add(complianceLabel, 0, 4);
+            mainPanel.Controls.Add(_complianceThresholdNumeric, 1, 4);
 
             // Data File Path
             var dataFilePathLabel = new Label
@@ -192,8 +209,8 @@ namespace OfficeAttendanceTracker.Desktop
             _browseButton.Click += BrowseButton_Click;
             pathPanel.Controls.Add(_dataFilePathTextBox);
             pathPanel.Controls.Add(_browseButton);
-            mainPanel.Controls.Add(dataFilePathLabel, 0, 4);
-            mainPanel.Controls.Add(pathPanel, 1, 4);
+            mainPanel.Controls.Add(dataFilePathLabel, 0, 5);
+            mainPanel.Controls.Add(pathPanel, 1, 5);
 
             // Data File Name
             var dataFileNameLabel = new Label
@@ -208,8 +225,8 @@ namespace OfficeAttendanceTracker.Desktop
                 Width = 200
             };
             toolTip.SetToolTip(_dataFileNameTextBox, "Name of the attendance file.\nSupported formats: .csv or .json\n\nApplied immediately after save.");
-            mainPanel.Controls.Add(dataFileNameLabel, 0, 5);
-            mainPanel.Controls.Add(_dataFileNameTextBox, 1, 5);
+            mainPanel.Controls.Add(dataFileNameLabel, 0, 6);
+            mainPanel.Controls.Add(_dataFileNameTextBox, 1, 6);
 
             // Buttons
             var buttonPanel = new Panel
@@ -265,7 +282,7 @@ namespace OfficeAttendanceTracker.Desktop
             buttonPanel.Controls.Add(rightButtonPanel);
 
             mainPanel.SetColumnSpan(buttonPanel, 2);
-            mainPanel.Controls.Add(buttonPanel, 0, 7);
+            mainPanel.Controls.Add(buttonPanel, 0, 8);
 
             this.Controls.Add(mainPanel);
             this.AcceptButton = _saveButton;
@@ -277,6 +294,15 @@ namespace OfficeAttendanceTracker.Desktop
             _networksTextBox.Text = string.Join(Environment.NewLine, _workingSettings.Networks);
             _pollIntervalNumeric.Value = _workingSettings.PollIntervalMs / 1000;
             _enableBackgroundWorkerCheckBox.Checked = _workingSettings.EnableBackgroundWorker;
+            
+            // Synchronize with actual registry state
+            var actualStartupState = _settingsManager.IsStartupEnabled();
+            if (actualStartupState != _workingSettings.StartWithWindows)
+            {
+                _workingSettings.StartWithWindows = actualStartupState;
+            }
+            _startWithWindowsCheckBox.Checked = _workingSettings.StartWithWindows;
+            
             _complianceThresholdNumeric.Value = (decimal)(_workingSettings.ComplianceThreshold * 100);
             _dataFilePathTextBox.Text = _workingSettings.DataFilePath ?? string.Empty;
             _dataFileNameTextBox.Text = _workingSettings.DataFileName;
@@ -352,11 +378,15 @@ namespace OfficeAttendanceTracker.Desktop
                 _workingSettings.Networks = networks;
                 _workingSettings.PollIntervalMs = (int)_pollIntervalNumeric.Value * 1000;
                 _workingSettings.EnableBackgroundWorker = _enableBackgroundWorkerCheckBox.Checked;
+                _workingSettings.StartWithWindows = _startWithWindowsCheckBox.Checked;
                 _workingSettings.ComplianceThreshold = (double)_complianceThresholdNumeric.Value / 100;
                 _workingSettings.DataFilePath = string.IsNullOrWhiteSpace(_dataFilePathTextBox.Text)
                     ? null
                     : _dataFilePathTextBox.Text;
                 _workingSettings.DataFileName = _dataFileNameTextBox.Text.Trim();
+
+                // Apply Windows startup setting
+                _settingsManager.SetStartupEnabled(_workingSettings.StartWithWindows);
 
                 // Save settings
                 _settingsManager.SaveSettings(_workingSettings);
@@ -391,6 +421,7 @@ namespace OfficeAttendanceTracker.Desktop
                 $"- Office Networks: {string.Join(", ", defaults.Networks)}\n" +
                 $"- Poll Interval: {defaults.PollIntervalMs / 1000} seconds ({defaults.PollIntervalMs / 60000} minutes)\n" +
                 $"- Background Worker: {(defaults.EnableBackgroundWorker ? "Enabled" : "Disabled")}\n" +
+                $"- Start with Windows: {(defaults.StartWithWindows ? "Enabled" : "Disabled")}\n" +
                 $"- Compliance Threshold: {defaults.ComplianceThreshold * 100}%\n" +
                 $"- Data File Name: {defaults.DataFileName}\n" +
                 $"- Data File Path: {(string.IsNullOrEmpty(defaults.DataFilePath) ? "(default)" : defaults.DataFilePath)}";
