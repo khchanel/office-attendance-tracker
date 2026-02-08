@@ -3,6 +3,7 @@
     public interface IAttendanceService
     {
         int GetCurrentMonthAttendance();
+        bool CheckAttendance();
         bool TakeAttendance();
         void Reload();
         

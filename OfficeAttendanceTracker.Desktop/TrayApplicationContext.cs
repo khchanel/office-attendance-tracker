@@ -16,6 +16,7 @@ namespace OfficeAttendanceTracker.Desktop
         private readonly IAttendanceServiceProvider _serviceProvider;
         private readonly SettingsManager _settingsManager;
         private readonly System.Windows.Forms.Timer _updateTimer;
+        private int _lastCount = 0;
         private SettingsForm? _settingsForm;
 
         /// <summary>
@@ -175,21 +176,35 @@ namespace OfficeAttendanceTracker.Desktop
                 
                 // Reload from disk to get latest persisted data
                 service.Reload();
-                
+
                 // Immediately take attendance
-                var isInOffice = service.TakeAttendance();
-                
+                bool isInOffice;
+                if (_settingsManager.CurrentSettings.EnableBackgroundWorker)
+                {
+                    isInOffice = service.TakeAttendance();
+                }
+                else
+                {
+                    // If background worker is disabled, just check presence without recording
+                    isInOffice = service.CheckAttendance();
+                }
+
                 var count = service.GetCurrentMonthAttendance();
                 var currentMonth = DateTime.Today.ToString("MMMM yyyy");
 
                 // Update icon with the count number
-                var oldIcon = _trayIcon.Icon;
-                _trayIcon.Icon = CreateIconWithNumber(count);
-
-                // Dispose old icon to free resources (but not if it's the system icon)
-                if (oldIcon != null && oldIcon != SystemIcons.Application)
+                if (count != _lastCount)
                 {
-                    oldIcon.Dispose();
+                    var oldIcon = _trayIcon.Icon;
+                    _trayIcon.Icon = CreateIconWithNumber(count);
+
+                    // Dispose old icon to free resources (but not if it's the system icon)
+                    if (oldIcon != null && oldIcon != SystemIcons.Application)
+                    {
+                        oldIcon.Dispose();
+                    }
+
+                    _lastCount = count;
                 }
 
                 // Build status messages

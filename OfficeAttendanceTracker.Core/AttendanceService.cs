@@ -67,7 +67,7 @@ namespace OfficeAttendanceTracker.Core
 
         public bool IsReady => _networks.Count > 0;
 
-        private bool CheckAttendance()
+        public bool CheckAttendance()
         {
             // If no networks configured, cannot detect office presence
             if (_networks.Count == 0)
