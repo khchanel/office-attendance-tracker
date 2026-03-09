@@ -16,7 +16,7 @@ namespace OfficeAttendanceTracker.Desktop
         private readonly IAttendanceServiceProvider _serviceProvider;
         private readonly SettingsManager _settingsManager;
         private readonly System.Windows.Forms.Timer _updateTimer;
-        private int _lastCount = 0;
+        private int _lastCount = -1;
         private SettingsForm? _settingsForm;
 
         /// <summary>
