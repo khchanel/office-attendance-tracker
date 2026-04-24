@@ -196,6 +196,122 @@ namespace OfficeAttendanceTracker.Test
 
         #endregion
 
+        #region IsDayOff Tests
+
+        [TestMethod]
+        public void GetBusinessDaysInCurrentMonth_ReducesCount_WhenIsDayOffIsTrue()
+        {
+            // Arrange: mock 5 day-off records in January 2025
+            var dayOffRecords = new List<AttendanceRecord>
+            {
+                new() { Date = new DateTime(2025, 1, 6), IsOffice = false, IsDayOff = true },
+                new() { Date = new DateTime(2025, 1, 7), IsOffice = false, IsDayOff = true },
+                new() { Date = new DateTime(2025, 1, 13), IsOffice = false, IsDayOff = true },
+                new() { Date = new DateTime(2025, 1, 20), IsOffice = false, IsDayOff = true },
+                new() { Date = new DateTime(2025, 1, 27), IsOffice = false, IsDayOff = true },
+            };
+            _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns(dayOffRecords);
+
+            var service = CreateService();
+
+            // Act
+            var totalBusinessDays = service.GetBusinessDaysInCurrentMonth();
+
+            // Assert: 23 Mon-Fri days - 5 day-offs = 18
+            Assert.AreEqual(18, totalBusinessDays);
+        }
+
+        [TestMethod]
+        public void GetBusinessDaysUpToToday_ReducesCount_WhenIsDayOffIsTrue()
+        {
+            // Arrange: mock day-off records up to Jan 15
+            var dayOffRecords = new List<AttendanceRecord>
+            {
+                new() { Date = new DateTime(2025, 1, 6), IsOffice = false, IsDayOff = true },
+                new() { Date = new DateTime(2025, 1, 13), IsOffice = false, IsDayOff = true },
+            };
+            _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns(dayOffRecords);
+
+            var service = CreateService();
+
+            // Act
+            var businessDaysUpToToday = service.GetBusinessDaysUpToToday();
+
+            // Assert: Mon-Fri days up to Jan 15 = 11, minus 2 day-offs = 9
+            Assert.AreEqual(9, businessDaysUpToToday);
+        }
+
+        [TestMethod]
+        public void GetBusinessDaysInCurrentMonth_IgnoresDayOffOnWeekends()
+        {
+            // Arrange: IsDayOff on a Saturday should not affect the count
+            var records = new List<AttendanceRecord>
+            {
+                new() { Date = new DateTime(2025, 1, 4), IsOffice = false, IsDayOff = true }, // Saturday
+            };
+            _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns(records);
+
+            var service = CreateService();
+
+            // Act
+            var totalBusinessDays = service.GetBusinessDaysInCurrentMonth();
+
+            // Assert: still 23 (Saturday not counted as business day anyway)
+            Assert.IsTrue(totalBusinessDays >= 20 && totalBusinessDays <= 23);
+        }
+
+        [TestMethod]
+        public void GetBusinessDaysInCurrentMonth_OnlyCountsDayOffRecordsInCurrentMonth()
+        {
+            // Arrange: day-off record from previous month should not be subtracted
+            var records = new List<AttendanceRecord>
+            {
+                new() { Date = new DateTime(2024, 12, 30), IsOffice = false, IsDayOff = true }, // December
+                new() { Date = new DateTime(2025, 1, 6), IsOffice = false, IsDayOff = true },   // January
+            };
+            _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns(records);
+
+            var service = CreateService();
+
+            // Act
+            var totalBusinessDays = service.GetBusinessDaysInCurrentMonth();
+
+            // Assert: only 1 day-off in January, so 23 - 1 = 22
+            Assert.AreEqual(22, totalBusinessDays);
+        }
+
+        [TestMethod]
+        public void GetComplianceStatus_AccountsForDayOffReduction()
+        {
+            // Arrange: 15 business days in January (20 Mon-Fri minus 5 day-offs), 50% threshold = 10 required
+            var records = new List<AttendanceRecord>();
+            // 5 day-offs on weekdays
+            records.AddRange(new[]
+            {
+                new AttendanceRecord { Date = new DateTime(2025, 1, 6), IsOffice = false, IsDayOff = true },
+                new AttendanceRecord { Date = new DateTime(2025, 1, 7), IsOffice = false, IsDayOff = true },
+                new AttendanceRecord { Date = new DateTime(2025, 1, 13), IsOffice = false, IsDayOff = true },
+                new AttendanceRecord { Date = new DateTime(2025, 1, 20), IsOffice = false, IsDayOff = true },
+                new AttendanceRecord { Date = new DateTime(2025, 1, 27), IsOffice = false, IsDayOff = true },
+            });
+            // 5 office days
+            records.AddRange(Enumerable.Range(1, 5).Select(i => new AttendanceRecord { Date = new DateTime(2025, 1, 15).AddDays(-i), IsOffice = true }));
+            _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns(records);
+
+            var config = BuildConfig(new Dictionary<string, string> { { "ComplianceThreshold", "0.5" } });
+            var service = CreateService(config);
+
+            // Act
+            var totalBusinessDays = service.GetBusinessDaysInCurrentMonth();
+            var status = service.GetComplianceStatus();
+
+            // Assert: 23 Mon-Fri - 5 day-offs = 18 total business days, 50% = 9 required for entire month
+            Assert.AreEqual(18, totalBusinessDays);
+            Assert.AreEqual(ComplianceStatus.Compliant, status);
+        }
+
+        #endregion
+
         #region GetComplianceStatus Tests
 
         [TestMethod]

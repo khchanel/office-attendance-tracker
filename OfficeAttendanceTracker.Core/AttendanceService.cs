@@ -112,7 +112,10 @@ namespace OfficeAttendanceTracker.Core
                 }
             }
 
-            return businessDays;
+            var records = _attendanceRecordStore.GetMonth(today);
+            var dayOffDays = records?.Count(r => r.IsDayOff && r.Date >= firstDayOfMonth && r.Date <= lastDayOfMonth) ?? 0;
+
+            return businessDays - dayOffDays;
         }
 
         public int GetBusinessDaysUpToToday()
@@ -129,7 +132,10 @@ namespace OfficeAttendanceTracker.Core
                 }
             }
 
-            return businessDays;
+            var records = _attendanceRecordStore.GetMonth(today);
+            var dayOffDays = records?.Count(r => r.IsDayOff && r.Date <= today) ?? 0;
+
+            return businessDays - dayOffDays;
         }
 
         public ComplianceStatus GetComplianceStatus()
