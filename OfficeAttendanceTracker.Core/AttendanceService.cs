@@ -106,14 +106,14 @@ namespace OfficeAttendanceTracker.Core
             int businessDays = 0;
             for (var date = firstDayOfMonth; date <= lastDayOfMonth; date = date.AddDays(1))
             {
-                if (date.DayOfWeek >= DayOfWeek.Monday && date.DayOfWeek <= DayOfWeek.Friday)
+                if (date.IsWeekday())
                 {
                     businessDays++;
                 }
             }
 
             var records = _attendanceRecordStore.GetMonth(today);
-            var dayOffDays = records?.Count(r => r.IsDayOff && r.Date >= firstDayOfMonth && r.Date <= lastDayOfMonth) ?? 0;
+            var dayOffDays = records?.Count(r => r.IsDayOff && r.Date >= firstDayOfMonth && r.Date <= lastDayOfMonth && r.Date.IsWeekday()) ?? 0;
 
             return businessDays - dayOffDays;
         }
@@ -126,14 +126,14 @@ namespace OfficeAttendanceTracker.Core
             int businessDays = 0;
             for (var date = firstDayOfMonth; date <= today; date = date.AddDays(1))
             {
-                if (date.DayOfWeek >= DayOfWeek.Monday && date.DayOfWeek <= DayOfWeek.Friday)
+                if (date.IsWeekday())
                 {
                     businessDays++;
                 }
             }
 
             var records = _attendanceRecordStore.GetMonth(today);
-            var dayOffDays = records?.Count(r => r.IsDayOff && r.Date <= today) ?? 0;
+            var dayOffDays = records?.Count(r => r.IsDayOff && r.Date <= today && r.Date.IsWeekday()) ?? 0;
 
             return businessDays - dayOffDays;
         }

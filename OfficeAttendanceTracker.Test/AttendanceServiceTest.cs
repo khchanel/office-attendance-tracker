@@ -256,8 +256,28 @@ namespace OfficeAttendanceTracker.Test
             // Act
             var totalBusinessDays = service.GetBusinessDaysInCurrentMonth();
 
-            // Assert: still 23 (Saturday not counted as business day anyway)
-            Assert.IsTrue(totalBusinessDays >= 20 && totalBusinessDays <= 23);
+            // Assert: no weekday day-offs, so full 23 mon-fri days
+            Assert.AreEqual(23, totalBusinessDays);
+        }
+
+        [TestMethod]
+        public void GetBusinessDaysUpToToday_IgnoresDayOffOnWeekends()
+        {
+            // Arrange: mock date to Jan 15 2025 (Wed); Sat Jan 4 is a Saturday
+            SetMockDate(new DateTime(2025, 1, 15));
+            var records = new List<AttendanceRecord>
+            {
+                new() { Date = new DateTime(2025, 1, 4), IsOffice = false, IsDayOff = true }, // Saturday
+            };
+            _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns(records);
+
+            var service = CreateService();
+
+            // Act
+            var businessDaysUpToToday = service.GetBusinessDaysUpToToday();
+
+            // Assert: Jan 1 (Wed) to Jan 15 (Wed) = 11 weekdays; Saturday day-off should not reduce count
+            Assert.AreEqual(11, businessDaysUpToToday);
         }
 
         [TestMethod]

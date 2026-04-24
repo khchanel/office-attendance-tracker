@@ -9,4 +9,10 @@ namespace OfficeAttendanceTracker.Core
         public required bool IsOffice { get; set; }
         public bool IsDayOff { get; set; }
     }
+
+    public static class DateTimeExtensions
+    {
+        public static bool IsWeekday(this DateTime date) =>
+            date.DayOfWeek >= DayOfWeek.Monday && date.DayOfWeek <= DayOfWeek.Friday;
+    }
 }
