@@ -94,7 +94,7 @@ namespace OfficeAttendanceTracker.Core
         public int GetCurrentMonthAttendance()
         {
             var currentMonthRecords = _attendanceRecordStore.GetMonth(_dateTimeProvider.Today);
-            return currentMonthRecords.Count(r => r.IsOffice);
+            return currentMonthRecords.Count(r => r.IsOffice && !r.IsDayOff);
         }
 
         public int GetBusinessDaysInCurrentMonth()

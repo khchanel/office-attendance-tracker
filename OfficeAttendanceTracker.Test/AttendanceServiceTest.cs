@@ -585,6 +585,27 @@ namespace OfficeAttendanceTracker.Test
             Assert.AreEqual(3, count);
         }
 
+        [TestMethod]
+        public void GetCurrentMonthAttendance_ExcludesDayOffEvenWhenIsOfficeIsTrue()
+        {
+            // Arrange: one record has both IsOffice=true and IsDayOff=true
+            var records = new List<AttendanceRecord>
+            {
+                new AttendanceRecord { Date = DateTime.Today.AddDays(-1), IsOffice = true, IsDayOff = true },
+                new AttendanceRecord { Date = DateTime.Today.AddDays(-2), IsOffice = true, IsDayOff = false },
+                new AttendanceRecord { Date = DateTime.Today.AddDays(-3), IsOffice = true },
+            };
+            _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns(records);
+
+            var service = CreateService();
+
+            // Act
+            var count = service.GetCurrentMonthAttendance();
+
+            // Assert: day-off record should not count, so only 2
+            Assert.AreEqual(2, count);
+        }
+
         #endregion
     }
 }
