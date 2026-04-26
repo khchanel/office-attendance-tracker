@@ -102,40 +102,37 @@ namespace OfficeAttendanceTracker.Core
             var today = _dateTimeProvider.Today;
             var firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
             var lastDayOfMonth = new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
-
-            int businessDays = 0;
-            for (var date = firstDayOfMonth; date <= lastDayOfMonth; date = date.AddDays(1))
-            {
-                if (date.IsWeekday())
-                {
-                    businessDays++;
-                }
-            }
-
             var records = _attendanceRecordStore.GetMonth(today);
-            var dayOffDays = records?.Count(r => r.IsDayOff && r.Date >= firstDayOfMonth && r.Date <= lastDayOfMonth && r.Date.IsWeekday()) ?? 0;
 
-            return businessDays - dayOffDays;
+            return CountBusinessDays(firstDayOfMonth, lastDayOfMonth, records);
         }
 
         public int GetBusinessDaysUpToToday()
         {
             var today = _dateTimeProvider.Today;
             var firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
+            var records = _attendanceRecordStore.GetMonth(today);
 
-            int businessDays = 0;
-            for (var date = firstDayOfMonth; date <= today; date = date.AddDays(1))
+            return CountBusinessDays(firstDayOfMonth, today, records);
+        }
+
+        private int CountBusinessDays(DateTime from, DateTime to, List<AttendanceRecord>? records)
+        {
+            int count = 0;
+            var dayOffSet = records?
+                    .Where(r => r.IsDayOff && r.Date >= from && r.Date <= to)
+                    .Select(r => r.Date.Date)
+                    .ToHashSet() ?? [];
+
+            for (var date = from; date <= to; date = date.AddDays(1))
             {
-                if (date.IsWeekday())
+                if (date.IsWeekday() && !dayOffSet.Contains(date.Date))
                 {
-                    businessDays++;
+                    count++;
                 }
             }
 
-            var records = _attendanceRecordStore.GetMonth(today);
-            var dayOffDays = records?.Count(r => r.IsDayOff && r.Date <= today && r.Date.IsWeekday()) ?? 0;
-
-            return businessDays - dayOffDays;
+            return count;
         }
 
         public ComplianceStatus GetComplianceStatus()
