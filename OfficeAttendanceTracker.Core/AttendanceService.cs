@@ -94,7 +94,7 @@ namespace OfficeAttendanceTracker.Core
         public int GetCurrentMonthAttendance()
         {
             var currentMonthRecords = _attendanceRecordStore.GetMonth(_dateTimeProvider.Today);
-            return currentMonthRecords.Count(r => r.IsOffice);
+            return currentMonthRecords.Count(r => r.IsOffice && !r.IsDayOff);
         }
 
         public int GetBusinessDaysInCurrentMonth()
@@ -102,34 +102,37 @@ namespace OfficeAttendanceTracker.Core
             var today = _dateTimeProvider.Today;
             var firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
             var lastDayOfMonth = new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
+            var records = _attendanceRecordStore.GetMonth(today);
 
-            int businessDays = 0;
-            for (var date = firstDayOfMonth; date <= lastDayOfMonth; date = date.AddDays(1))
-            {
-                if (date.DayOfWeek >= DayOfWeek.Monday && date.DayOfWeek <= DayOfWeek.Friday)
-                {
-                    businessDays++;
-                }
-            }
-
-            return businessDays;
+            return CountBusinessDays(firstDayOfMonth, lastDayOfMonth, records);
         }
 
         public int GetBusinessDaysUpToToday()
         {
             var today = _dateTimeProvider.Today;
             var firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
+            var records = _attendanceRecordStore.GetMonth(today);
 
-            int businessDays = 0;
-            for (var date = firstDayOfMonth; date <= today; date = date.AddDays(1))
+            return CountBusinessDays(firstDayOfMonth, today, records);
+        }
+
+        private int CountBusinessDays(DateTime from, DateTime to, List<AttendanceRecord>? records)
+        {
+            int count = 0;
+            var dayOffSet = records?
+                    .Where(r => r.IsDayOff && r.Date >= from && r.Date <= to)
+                    .Select(r => r.Date.Date)
+                    .ToHashSet() ?? [];
+
+            for (var date = from; date <= to; date = date.AddDays(1))
             {
-                if (date.DayOfWeek >= DayOfWeek.Monday && date.DayOfWeek <= DayOfWeek.Friday)
+                if (date.IsWeekday() && !dayOffSet.Contains(date.Date))
                 {
-                    businessDays++;
+                    count++;
                 }
             }
 
-            return businessDays;
+            return count;
         }
 
         public ComplianceStatus GetComplianceStatus()

@@ -9,4 +9,5 @@ namespace OfficeAttendanceTracker.Core
         public required bool IsOffice { get; set; }
         public bool IsDayOff { get; set; }
     }
+
 }
