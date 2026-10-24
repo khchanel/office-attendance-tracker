@@ -91,6 +91,13 @@ namespace OfficeAttendanceTracker.Core
             _attendanceRecordStore.Reload();
         }
 
+        /// <inheritdoc />
+        public void SetDayOff(DateTime date, bool isDayOff)
+        {
+            _attendanceRecordStore.Reload();
+            _attendanceRecordStore.SetDayOff(isDayOff, date.Date);
+        }
+
         public int GetCurrentMonthAttendance()
         {
             var currentMonthRecords = _attendanceRecordStore.GetMonth(_dateTimeProvider.Today);

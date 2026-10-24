@@ -2,7 +2,7 @@ using OfficeAttendanceTracker.Core;
 
 namespace OfficeAttendanceTracker.Desktop;
 
-/// <summary>Interactive, read-only monthly attendance reporting window.</summary>
+/// <summary>Interactive monthly attendance report with day-off management.</summary>
 public sealed class ReportsForm : Form
 {
     private static readonly Color OfficeColor = Color.FromArgb(213, 239, 225);
@@ -12,6 +12,7 @@ public sealed class ReportsForm : Form
     private readonly IDateTimeProvider _clock;
     private readonly Font _calendarFont = new("Segoe UI", 9);
     private readonly ToolTip _toolTip = new();
+    private readonly Button _dayOffButton = new() { Text = "Mark as day off", AutoSize = true, Height = 30, Enabled = false };
     private readonly DateTimePicker _month = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "MMMM yyyy", ShowUpDown = true, Width = 175 };
     private readonly ComboBox _filter = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 165 };
     private readonly TableLayoutPanel _calendar = new() { Dock = DockStyle.Fill, ColumnCount = 7, RowCount = 7, Padding = new Padding(6) };
@@ -29,6 +30,10 @@ public sealed class ReportsForm : Form
     private readonly TargetProgressBar _progress = new() { Dock = DockStyle.Fill, Height = 18 };
     private MonthlyAttendanceReport? _report;
     private bool _loading;
+    private bool _saving;
+
+    /// <summary>Occurs after a day-off change has been saved.</summary>
+    public event EventHandler? RecordsChanged;
 
     /// <summary>Creates a report using the active service and application clock.</summary>
     public ReportsForm(IAttendanceServiceProvider serviceProvider, IDateTimeProvider clock)
@@ -56,6 +61,8 @@ public sealed class ReportsForm : Form
         toolbar.Controls.Add(MakeButton("Next", () => MoveMonth(1)));
         toolbar.Controls.Add(MakeButton("This month", () => _month.Value = new DateTime(_clock.Today.Year, _clock.Today.Month, 1)));
         toolbar.Controls.Add(MakeButton("Refresh", RefreshReport));
+        toolbar.Controls.Add(_dayOffButton);
+        _dayOffButton.Click += (_, _) => ToggleDayOff();
         layout.Controls.Add(toolbar, 0, 1);
         layout.Controls.Add(_summary, 0, 2);
         layout.Controls.Add(_target, 0, 3);
@@ -135,7 +142,7 @@ public sealed class ReportsForm : Form
     /// <summary>Reloads stored data without taking attendance or writing records.</summary>
     public void RefreshReport()
     {
-        if (_loading || IsDisposed)
+        if (_loading || _saving || IsDisposed)
             return;
         _loading = true;
         try
@@ -173,6 +180,7 @@ public sealed class ReportsForm : Form
             _progress.ForeColor = SystemColors.ControlDark;
             _progress.Value = 0;
             _detail.Text = $"Could not load attendance: {ex.Message}";
+            _dayOffButton.Enabled = false;
         }
         finally
         {
@@ -186,6 +194,36 @@ public sealed class ReportsForm : Form
         if (record is not null)
             return record.IsDayOff ? "Day off" : record.IsOffice ? "Office" : "Not in office";
         return date > _clock.Today ? "Upcoming" : date.IsWeekday() ? "No record" : "Weekend";
+    }
+
+    private void ToggleDayOff()
+    {
+        if (_loading || _saving || _report == null || _records.CurrentRow?.Tag is not DateTime date)
+            return;
+
+        var isDayOff = _report.Records.FirstOrDefault(record => record.Date.Date == date)?.IsDayOff ?? false;
+        _saving = true;
+        _dayOffButton.Enabled = false;
+        try
+        {
+            _serviceProvider.Current.SetDayOff(date, !isDayOff);
+        }
+        catch (Exception ex)
+        {
+            ShowSelectedDay();
+            _detail.Text = $"Could not save the day-off change for {date:d}: {ex.Message}";
+            return;
+        }
+        finally
+        {
+            _saving = false;
+            _dayOffButton.Enabled = _report != null && _records.CurrentRow?.Tag is DateTime;
+        }
+
+        RefreshReport();
+        if (_report != null)
+            SelectDate(date);
+        RecordsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private static Color StatusColor(string status) => status switch
@@ -284,6 +322,15 @@ public sealed class ReportsForm : Form
     private void ShowSelectedDay()
     {
         var date = _records.CurrentRow?.Tag as DateTime?;
+        var isDayOff = date is { } selectedDate &&
+            (_report?.Records.FirstOrDefault(record => record.Date.Date == selectedDate)?.IsDayOff ?? false);
+        _dayOffButton.Enabled = _report != null && date.HasValue && !_saving;
+        _dayOffButton.Text = isDayOff ? "Remove day off" : "Mark as day off";
+        _toolTip.SetToolTip(_dayOffButton, date is { } actionDate
+            ? $"{actionDate:D}. " + (actionDate.IsWeekday()
+                ? "Weekday days off are excluded from the monthly target. Office attendance is preserved."
+                : "Weekend days off do not reduce the monthly target. Office attendance is preserved.")
+            : "Select a calendar day or daily record first.");
         _detail.Text = date is { } selected
             ? $"{selected:D}: {Status(selected)}.  * Today. Select a calendar day or filter the list to review records."
             : "No days match this filter. Select another filter to review records.";

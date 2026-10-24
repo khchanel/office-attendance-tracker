@@ -17,6 +17,7 @@ namespace OfficeAttendanceTracker.Desktop
         private readonly SettingsManager _settingsManager;
         private readonly System.Windows.Forms.Timer _updateTimer;
         private int _lastCount = -1;
+        private ComplianceStatus? _lastComplianceStatus;
         private SettingsForm? _settingsForm;
         private ReportsForm? _reportsForm;
 
@@ -170,7 +171,7 @@ namespace OfficeAttendanceTracker.Desktop
             }
         }
 
-        private void UpdateAttendanceCount(bool showBalloonTip = false)
+        private void UpdateAttendanceCount(bool showBalloonTip = false, bool recordAttendance = true)
         {
             try
             {
@@ -182,7 +183,7 @@ namespace OfficeAttendanceTracker.Desktop
 
                 // Immediately take attendance
                 bool isInOffice;
-                if (_settingsManager.CurrentSettings.EnableBackgroundWorker)
+                if (recordAttendance && _settingsManager.CurrentSettings.EnableBackgroundWorker)
                 {
                     isInOffice = service.TakeAttendance();
                 }
@@ -198,7 +199,8 @@ namespace OfficeAttendanceTracker.Desktop
                 var currentMonth = DateTime.Today.ToString("MMMM yyyy");
 
                 // Update icon with the count number
-                if (count != _lastCount)
+                var complianceStatus = service.GetComplianceStatus();
+                if (count != _lastCount || complianceStatus != _lastComplianceStatus)
                 {
                     var oldIcon = _trayIcon.Icon;
                     _trayIcon.Icon = CreateIconWithNumber(count);
@@ -210,10 +212,10 @@ namespace OfficeAttendanceTracker.Desktop
                     }
 
                     _lastCount = count;
+                    _lastComplianceStatus = complianceStatus;
                 }
 
                 // Build status messages
-                var complianceStatus = service.GetComplianceStatus();
                 var complianceText = GetComplianceStatusText(complianceStatus);
                 var officeStatusText = isInOffice ? "[YES] Currently in office" : "[NO] Not in office";
                 var attendanceText = $"Office days ({currentMonth}): {count}/{requiredDays} (target {targetPercentage:P0})";
@@ -279,6 +281,7 @@ namespace OfficeAttendanceTracker.Desktop
             }
 
             _reportsForm = new ReportsForm(_serviceProvider, _host.Services.GetRequiredService<IDateTimeProvider>());
+            _reportsForm.RecordsChanged += (_, _) => UpdateAttendanceCount(recordAttendance: false);
             _reportsForm.FormClosed += (_, _) => _reportsForm = null;
             _reportsForm.Show();
         }

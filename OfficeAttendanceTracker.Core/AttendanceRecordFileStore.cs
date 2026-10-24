@@ -98,6 +98,39 @@ namespace OfficeAttendanceTracker.Core
             }
         }
 
+        /// <inheritdoc />
+        public void SetDayOff(bool isDayOff, DateTime date)
+        {
+            lock (_lock)
+            {
+                var record = GetDate(date.Date);
+                if (record?.IsDayOff == isDayOff || (record == null && !isDayOff))
+                    return;
+
+                var wasDirty = _isDirty;
+                var wasDayOff = record?.IsDayOff ?? false;
+                var isNew = record == null;
+                record ??= Add(false, date.Date);
+                record.IsDayOff = isDayOff;
+                _isDirty = true;
+
+                try
+                {
+                    SaveChanges();
+                }
+                catch
+                {
+                    // Do not let the auto-save timer retry a failed user edit later.
+                    if (isNew)
+                        Records.Remove(record);
+                    else
+                        record.IsDayOff = wasDayOff;
+                    _isDirty = wasDirty;
+                    throw;
+                }
+            }
+        }
+
         public List<AttendanceRecord> GetAll(DateTime startDate, DateTime endDate)
         {
 
