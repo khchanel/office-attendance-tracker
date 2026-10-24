@@ -100,18 +100,25 @@ namespace OfficeAttendanceTracker.Core
 
         /// <inheritdoc />
         public void SetDayOff(bool isDayOff, DateTime date)
+            => SetRecordFlag(isDayOff, date, static record => record.IsDayOff, static (record, value) => record.IsDayOff = value);
+
+        /// <inheritdoc />
+        public void SetOfficeAttendance(bool isOffice, DateTime date)
+            => SetRecordFlag(isOffice, date, static record => record.IsOffice, static (record, value) => record.IsOffice = value);
+
+        private void SetRecordFlag(bool value, DateTime date, Func<AttendanceRecord, bool> getFlag, Action<AttendanceRecord, bool> setFlag)
         {
             lock (_lock)
             {
                 var record = GetDate(date.Date);
-                if (record?.IsDayOff == isDayOff || (record == null && !isDayOff))
+                if ((record != null && getFlag(record) == value) || (record == null && !value))
                     return;
 
                 var wasDirty = _isDirty;
-                var wasDayOff = record?.IsDayOff ?? false;
+                var previousValue = record != null && getFlag(record);
                 var isNew = record == null;
                 record ??= Add(false, date.Date);
-                record.IsDayOff = isDayOff;
+                setFlag(record, value);
                 _isDirty = true;
 
                 try
@@ -124,7 +131,7 @@ namespace OfficeAttendanceTracker.Core
                     if (isNew)
                         Records.Remove(record);
                     else
-                        record.IsDayOff = wasDayOff;
+                        setFlag(record, previousValue);
                     _isDirty = wasDirty;
                     throw;
                 }

@@ -98,6 +98,16 @@ namespace OfficeAttendanceTracker.Core
             _attendanceRecordStore.SetDayOff(isDayOff, date.Date);
         }
 
+        /// <inheritdoc />
+        public void SetOfficeAttendance(DateTime date, bool isOffice)
+        {
+            if (isOffice && date.Date > _dateTimeProvider.Today)
+                throw new ArgumentOutOfRangeException(nameof(date), "Office attendance can only be recorded for today or earlier.");
+
+            _attendanceRecordStore.Reload();
+            _attendanceRecordStore.SetOfficeAttendance(isOffice, date.Date);
+        }
+
         public int GetCurrentMonthAttendance()
         {
             var currentMonthRecords = _attendanceRecordStore.GetMonth(_dateTimeProvider.Today);

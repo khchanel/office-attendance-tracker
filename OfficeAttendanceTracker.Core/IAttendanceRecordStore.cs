@@ -35,6 +35,12 @@ namespace OfficeAttendanceTracker.Core
         void SetDayOff(bool isDayOff, DateTime date);
 
         /// <summary>
+        /// Sets and immediately persists office attendance, preserving the day-off flag.
+        /// Marking an unrecorded date creates a record; unmarking one has no effect.
+        /// </summary>
+        void SetOfficeAttendance(bool isOffice, DateTime date);
+
+        /// <summary>
         /// Clear storage and reset
         /// </summary>
         void Clear();

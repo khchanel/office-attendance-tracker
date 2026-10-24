@@ -2,7 +2,7 @@ using OfficeAttendanceTracker.Core;
 
 namespace OfficeAttendanceTracker.Desktop;
 
-/// <summary>Interactive monthly attendance report with day-off management.</summary>
+/// <summary>Interactive monthly attendance report with attendance and day-off management.</summary>
 public sealed class ReportsForm : Form
 {
     private static readonly Color OfficeColor = Color.FromArgb(213, 239, 225);
@@ -13,6 +13,7 @@ public sealed class ReportsForm : Form
     private readonly Font _calendarFont = new("Segoe UI", 9);
     private readonly ToolTip _toolTip = new();
     private readonly Button _dayOffButton = new() { Text = "Mark as day off", AutoSize = true, Height = 30, Enabled = false };
+    private readonly Button _officeButton = new() { Text = "Mark as in office", AutoSize = true, Height = 30, Enabled = false };
     private readonly DateTimePicker _month = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "MMMM yyyy", ShowUpDown = true, Width = 175 };
     private readonly ComboBox _filter = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 165 };
     private readonly TableLayoutPanel _calendar = new() { Dock = DockStyle.Fill, ColumnCount = 7, RowCount = 7, Padding = new Padding(6) };
@@ -32,7 +33,7 @@ public sealed class ReportsForm : Form
     private bool _loading;
     private bool _saving;
 
-    /// <summary>Occurs after a day-off change has been saved.</summary>
+    /// <summary>Occurs after an attendance or day-off change has been saved.</summary>
     public event EventHandler? RecordsChanged;
 
     /// <summary>Creates a report using the active service and application clock.</summary>
@@ -54,15 +55,31 @@ public sealed class ReportsForm : Form
             layout.RowStyles.Add(new RowStyle(row == 6 ? SizeType.Percent : SizeType.AutoSize, row == 6 ? 100 : 0));
         layout.Controls.Add(new Label { Text = "Monthly attendance", AutoSize = true, Font = new Font(Font.FontFamily, 20, FontStyle.Bold) }, 0, 0);
 
-        var toolbar = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(0, 8, 0, 4) };
-        toolbar.Controls.Add(MakeButton("Previous", () => MoveMonth(-1)));
+        var toolbar = new TableLayoutPanel
+        {
+            AutoSize = true, Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
+            Padding = new Padding(0, 8, 0, 4)
+        };
+        toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        var readActions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, WrapContents = false, Margin = Padding.Empty };
+        var editActions = new FlowLayoutPanel
+        {
+            AutoSize = true, Anchor = AnchorStyles.Right, WrapContents = false,
+            Margin = new Padding(20, 0, 0, 0)
+        };
+        readActions.Controls.Add(MakeButton("Previous", () => MoveMonth(-1)));
         _month.Value = new DateTime(clock.Today.Year, clock.Today.Month, 1);
-        toolbar.Controls.Add(_month);
-        toolbar.Controls.Add(MakeButton("Next", () => MoveMonth(1)));
-        toolbar.Controls.Add(MakeButton("This month", () => _month.Value = new DateTime(_clock.Today.Year, _clock.Today.Month, 1)));
-        toolbar.Controls.Add(MakeButton("Refresh", RefreshReport));
-        toolbar.Controls.Add(_dayOffButton);
+        readActions.Controls.Add(_month);
+        readActions.Controls.Add(MakeButton("Next", () => MoveMonth(1)));
+        readActions.Controls.Add(MakeButton("This month", () => _month.Value = new DateTime(_clock.Today.Year, _clock.Today.Month, 1)));
+        readActions.Controls.Add(MakeButton("Refresh", RefreshReport));
+        editActions.Controls.Add(_dayOffButton);
         _dayOffButton.Click += (_, _) => ToggleDayOff();
+        editActions.Controls.Add(_officeButton);
+        _officeButton.Click += (_, _) => ToggleOfficeAttendance();
+        toolbar.Controls.Add(readActions, 0, 0);
+        toolbar.Controls.Add(editActions, 1, 0);
         layout.Controls.Add(toolbar, 0, 1);
         layout.Controls.Add(_summary, 0, 2);
         layout.Controls.Add(_target, 0, 3);
@@ -181,6 +198,7 @@ public sealed class ReportsForm : Form
             _progress.Value = 0;
             _detail.Text = $"Could not load attendance: {ex.Message}";
             _dayOffButton.Enabled = false;
+            _officeButton.Enabled = false;
         }
         finally
         {
@@ -197,27 +215,34 @@ public sealed class ReportsForm : Form
     }
 
     private void ToggleDayOff()
+        => SaveSelectedDate((service, date, record) => service.SetDayOff(date, !(record?.IsDayOff ?? false)), "day-off change");
+
+    private void ToggleOfficeAttendance()
+        => SaveSelectedDate((service, date, record) => service.SetOfficeAttendance(date, !(record?.IsOffice ?? false)), "office attendance");
+
+    private void SaveSelectedDate(Action<IAttendanceService, DateTime, AttendanceRecord?> save, string description)
     {
         if (_loading || _saving || _report == null || _records.CurrentRow?.Tag is not DateTime date)
             return;
 
-        var isDayOff = _report.Records.FirstOrDefault(record => record.Date.Date == date)?.IsDayOff ?? false;
+        var record = _report.Records.FirstOrDefault(record => record.Date.Date == date);
         _saving = true;
         _dayOffButton.Enabled = false;
+        _officeButton.Enabled = false;
         try
         {
-            _serviceProvider.Current.SetDayOff(date, !isDayOff);
+            save(_serviceProvider.Current, date, record);
         }
         catch (Exception ex)
         {
-            ShowSelectedDay();
-            _detail.Text = $"Could not save the day-off change for {date:d}: {ex.Message}";
+            _detail.Text = $"Could not save {description} for {date:d}: {ex.Message}";
             return;
         }
         finally
         {
             _saving = false;
             _dayOffButton.Enabled = _report != null && _records.CurrentRow?.Tag is DateTime;
+            _officeButton.Enabled = _dayOffButton.Enabled && (date <= _clock.Today || record?.IsOffice == true);
         }
 
         RefreshReport();
@@ -322,10 +347,20 @@ public sealed class ReportsForm : Form
     private void ShowSelectedDay()
     {
         var date = _records.CurrentRow?.Tag as DateTime?;
-        var isDayOff = date is { } selectedDate &&
-            (_report?.Records.FirstOrDefault(record => record.Date.Date == selectedDate)?.IsDayOff ?? false);
+        var record = date is { } selectedDate
+            ? _report?.Records.FirstOrDefault(record => record.Date.Date == selectedDate) : null;
+        var isDayOff = record?.IsDayOff ?? false;
         _dayOffButton.Enabled = _report != null && date.HasValue && !_saving;
         _dayOffButton.Text = isDayOff ? "Remove day off" : "Mark as day off";
+        _officeButton.Enabled = _dayOffButton.Enabled && (date <= _clock.Today || record?.IsOffice == true);
+        _officeButton.Text = record?.IsOffice == true ? "Remove office attendance" : "Mark as in office";
+        _toolTip.SetToolTip(_officeButton, date is { } officeDate
+            ? $"{officeDate:D}. " + (officeDate > _clock.Today
+                ? "Future visits cannot be marked as completed attendance. Existing future attendance can be removed."
+                : isDayOff
+                    ? "The day-off flag is preserved. Remove it to include this office attendance in totals."
+                    : "Changes save immediately. Automatic tracking may mark today in office again if office presence is detected.")
+            : "Select a calendar day or daily record first.");
         _toolTip.SetToolTip(_dayOffButton, date is { } actionDate
             ? $"{actionDate:D}. " + (actionDate.IsWeekday()
                 ? "Weekday days off are excluded from the monthly target. Office attendance is preserved."

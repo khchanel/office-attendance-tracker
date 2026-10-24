@@ -65,6 +65,8 @@ Right-click the tray icon and choose **Reports...** to review monthly attendance
 
 Select a calendar date or daily record and click **Mark as day off** or **Remove day off**. Changes save immediately and update the calendar, monthly target, compliance status, and tray. Past and future dates are supported. Existing office attendance is preserved when a day off is added or removed. Marking a date without a record creates a day-off record with no office attendance; removing the day-off flag retains that record.
 
+Use **Mark as in office** or **Remove office attendance** to correct attendance for today or a past date. Changes save immediately and preserve any day-off flag; days off remain excluded until that flag is removed. Future visits cannot be marked as completed attendance, although existing future attendance can be removed. Removing attendance retains the date's record as not in office. Automatic tracking can mark today in office again if office presence is detected.
+
 Weekday days off reduce the monthly business-day denominator. Weekend office visits count toward office attendance, matching the tray total. Missing records indicate unavailable tracking data, and future days are shown separately. Historical targets use your current settings.
 
 ### Windows Service
