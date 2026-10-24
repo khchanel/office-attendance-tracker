@@ -13,6 +13,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.github\workflows\dotnet.yml = .github\workflows\dotnet.yml
 		README.md = README.md
 		.github\workflows\release.yml = .github\workflows\release.yml
+		.dockerignore = .dockerignore
+		.gitignore = .gitignore
+		AGENTS.md = AGENTS.md
+		LICENSE = LICENSE
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfficeAttendanceTracker.Desktop", "OfficeAttendanceTracker.Desktop\OfficeAttendanceTracker.Desktop.csproj", "{B179B08D-DCE3-45EF-AF53-79883C6E25E7}"
