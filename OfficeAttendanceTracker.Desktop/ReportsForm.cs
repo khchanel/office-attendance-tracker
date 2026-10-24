@@ -24,9 +24,9 @@ public sealed class ReportsForm : Form
         BorderStyle = BorderStyle.None, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
     };
     private readonly Label _summary = new() { AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(0, 10, 0, 10) };
-    private readonly Label _target = new() { AutoSize = true, Dock = DockStyle.Fill };
+    private readonly Label _target = new() { AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(8, 6, 8, 6) };
     private readonly Label _detail = new() { AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(0, 8, 0, 0) };
-    private readonly ProgressBar _progress = new() { Dock = DockStyle.Fill, Height = 18, Maximum = 1000 };
+    private readonly TargetProgressBar _progress = new() { Dock = DockStyle.Fill, Height = 18 };
     private MonthlyAttendanceReport? _report;
     private bool _loading;
 
@@ -146,8 +146,16 @@ public sealed class ReportsForm : Form
             var rate = _report.AttendanceRate is { } value ? value.ToString("P0") : "N/A";
             _summary.Text = $"{_report.OfficeDays} office days     |     {_report.BusinessDays} business days     |     {_report.DaysOff} days off     |     {rate} of month     |     {_report.UnrecordedBusinessDays} unrecorded weekdays to date";
             var needed = Math.Max(0, _report.RequiredOfficeDays - _report.OfficeDays);
-            _target.Text = $"Monthly target: {_report.OfficeDays} / {_report.RequiredOfficeDays} office days ({_report.Threshold:P0}) - " +
-                (needed == 0 ? "Target met" : $"{needed} more needed");
+            var missedTarget = _report.IsComplete && !_report.IsTargetMet;
+            var status = missedTarget ? "Non-compliant" : _report.IsTargetMet ? "Target met" : "In progress";
+            var outcome = missedTarget ? $"Month ended: {needed} {(needed == 1 ? "day" : "days")} short" :
+                _report.IsTargetMet ? (_report.IsComplete ? "Month ended: compliant" : "Monthly target secured") : $"{needed} more needed";
+            _target.BackColor = missedTarget ? Color.FromArgb(253, 228, 228) :
+                _report.IsTargetMet ? OfficeColor : AwayColor;
+            _target.ForeColor = missedTarget ? Color.FromArgb(160, 28, 38) :
+                _report.IsTargetMet ? Color.FromArgb(25, 102, 63) : Color.FromArgb(130, 72, 12);
+            _target.Text = $"{status} | Monthly target: {_report.OfficeDays} / {_report.RequiredOfficeDays} office days ({_report.Threshold:P0}) - {outcome}";
+            _progress.ForeColor = _target.ForeColor;
             _progress.Value = _report.RequiredOfficeDays == 0 ? 1000 :
                 (int)Math.Min(1000, 1000d * _report.OfficeDays / _report.RequiredOfficeDays);
             PopulateCalendar();
@@ -160,6 +168,9 @@ public sealed class ReportsForm : Form
             _records.Rows.Clear();
             _summary.Text = "Report unavailable";
             _target.Text = "Use Refresh to try again.";
+            _target.BackColor = SystemColors.Control;
+            _target.ForeColor = SystemColors.ControlText;
+            _progress.ForeColor = SystemColors.ControlDark;
             _progress.Value = 0;
             _detail.Text = $"Could not load attendance: {ex.Message}";
         }
@@ -281,6 +292,45 @@ public sealed class ReportsForm : Form
             var isSelected = Equals(button.Tag, date);
             button.FlatAppearance.BorderSize = isSelected ? 3 : 1;
             button.FlatAppearance.BorderColor = isSelected ? Color.FromArgb(38, 85, 160) : Color.FromArgb(210, 216, 225);
+        }
+    }
+
+    // Native themed progress bars ignore ForeColor. Draw the fill so it matches the status banner.
+    private sealed class TargetProgressBar : Control
+    {
+        private int _value;
+
+        public TargetProgressBar()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
+            AccessibleRole = AccessibleRole.ProgressBar;
+            AccessibleName = "Monthly target progress";
+            BackColor = Color.FromArgb(228, 231, 236);
+        }
+
+        public int Value
+        {
+            get => _value;
+            set
+            {
+                _value = Math.Clamp(value, 0, 1000);
+                AccessibleDescription = $"{_value / 10d:0.#}% of monthly target";
+                Invalidate();
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            using var brush = new SolidBrush(ForeColor);
+            e.Graphics.FillRectangle(brush, 0, 0, ClientSize.Width * _value / 1000, ClientSize.Height);
+            e.Graphics.DrawRectangle(SystemPens.ControlDark, 0, 0, Math.Max(0, ClientSize.Width - 1), Math.Max(0, ClientSize.Height - 1));
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            Invalidate();
         }
     }
 }

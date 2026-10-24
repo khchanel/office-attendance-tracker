@@ -100,6 +100,7 @@ namespace OfficeAttendanceTracker.Core
         /// <inheritdoc />
         public MonthlyAttendanceReport GetMonthlyReport(DateTime month)
         {
+            var today = _dateTimeProvider.Today;
             var first = new DateTime(month.Year, month.Month, 1);
             var last = new DateTime(month.Year, month.Month, DateTime.DaysInMonth(month.Year, month.Month));
             var records = _attendanceRecordStore.GetMonth(first)
@@ -107,7 +108,7 @@ namespace OfficeAttendanceTracker.Core
             var recordedDates = records.Select(record => record.Date.Date).ToHashSet();
             var unrecorded = Enumerable.Range(1, last.Day)
                 .Select(day => new DateTime(first.Year, first.Month, day))
-                .Count(date => date <= _dateTimeProvider.Today && date.IsWeekday() && !recordedDates.Contains(date));
+                .Count(date => date <= today && date.IsWeekday() && !recordedDates.Contains(date));
             var businessDays = CountBusinessDays(first, last, records.ToList());
 
             return new MonthlyAttendanceReport
@@ -120,7 +121,8 @@ namespace OfficeAttendanceTracker.Core
                 UnrecordedBusinessDays = unrecorded,
                 DaysOff = records.Where(record => record.IsDayOff && record.Date.IsWeekday())
                     .Select(record => record.Date.Date).Distinct().Count(),
-                Threshold = _complianceThreshold
+                Threshold = _complianceThreshold,
+                IsComplete = first < new DateTime(today.Year, today.Month, 1)
             };
         }
 

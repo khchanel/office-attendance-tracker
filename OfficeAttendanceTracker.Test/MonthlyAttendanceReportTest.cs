@@ -183,4 +183,44 @@ public class MonthlyAttendanceReportTest
         // Assert
         _store.Verify(store => store.SaveChanges(), Times.Never);
     }
+
+    [TestMethod]
+    [DataRow(2024, 12, 1, 2025, 1, 15, true)]
+    [DataRow(2025, 1, 1, 2025, 1, 15, false)]
+    [DataRow(2025, 1, 1, 2025, 1, 31, false)]
+    [DataRow(2025, 1, 1, 2025, 2, 1, true)]
+    [DataRow(2025, 2, 1, 2025, 1, 15, false)]
+    public void GetMonthlyReport_OnlyPreviousMonthsAreComplete(
+        int year, int month, int day, int todayYear, int todayMonth, int todayDay, bool expected)
+    {
+        // Arrange
+        var service = CreateService();
+        _clock.Setup(clock => clock.Today).Returns(new DateTime(todayYear, todayMonth, todayDay));
+
+        // Act
+        var report = service.GetMonthlyReport(new DateTime(year, month, day));
+
+        // Assert
+        Assert.AreEqual(expected, report.IsComplete);
+    }
+
+    [TestMethod]
+    [DataRow(0, false)]
+    [DataRow(11, false)]
+    [DataRow(12, true)]
+    [DataRow(13, true)]
+    public void GetMonthlyReport_TargetMetRequiresRoundedMonthlyTarget(int officeDays, bool expected)
+    {
+        // Arrange: January has 23 weekdays, so a 50% target requires 12 office days.
+        var service = CreateService(Enumerable.Range(1, officeDays).Select(day => new AttendanceRecord
+        {
+            Date = new DateTime(2025, 1, day), IsOffice = true
+        }).ToList());
+
+        // Act
+        var report = service.GetMonthlyReport(new DateTime(2025, 1, 1));
+
+        // Assert
+        Assert.AreEqual(expected, report.IsTargetMet);
+    }
 }

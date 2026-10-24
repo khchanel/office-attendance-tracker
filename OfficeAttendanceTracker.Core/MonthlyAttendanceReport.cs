@@ -27,6 +27,12 @@ public sealed class MonthlyAttendanceReport
     /// <summary>Gets the configured target percentage as a fraction.</summary>
     public required double Threshold { get; init; }
 
+    /// <summary>Gets whether the reported month ended before the application's current date.</summary>
+    public bool IsComplete { get; init; }
+
+    /// <summary>Gets whether recorded attendance meets the entire month's target.</summary>
+    public bool IsTargetMet => OfficeDays >= RequiredOfficeDays;
+
     /// <summary>Gets monthly office attendance divided by eligible business days, or null when none exist.</summary>
     public double? AttendanceRate => BusinessDays == 0 ? null : (double)OfficeDays / BusinessDays;
 }
