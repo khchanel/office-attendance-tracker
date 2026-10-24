@@ -16,6 +16,13 @@
         /// Calculates the number of business days (Mon-Fri) in the current month
         /// </summary>
         int GetBusinessDaysInCurrentMonth();
+
+        /// <summary>
+        /// Calculates the required office days for the supplied business-day count,
+        /// rounded up using the configured compliance threshold.
+        /// </summary>
+        /// <param name="businessDays">The number of eligible business days.</param>
+        int CalculateRequiredOfficeDays(int businessDays);
         
         /// <summary>
         /// Calculates the number of business days (Mon-Fri) up to today in the current month

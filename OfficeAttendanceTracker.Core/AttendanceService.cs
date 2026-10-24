@@ -107,6 +107,16 @@ namespace OfficeAttendanceTracker.Core
             return CountBusinessDays(firstDayOfMonth, lastDayOfMonth, records);
         }
 
+        /// <summary>
+        /// Calculates the required office days for the supplied business-day count,
+        /// rounded up using the configured compliance threshold.
+        /// </summary>
+        /// <param name="businessDays">The number of eligible business days.</param>
+        public int CalculateRequiredOfficeDays(int businessDays)
+        {
+            return (int)Math.Ceiling(businessDays * _complianceThreshold);
+        }
+
         public int GetBusinessDaysUpToToday()
         {
             var today = _dateTimeProvider.Today;
@@ -142,8 +152,8 @@ namespace OfficeAttendanceTracker.Core
             var totalBusinessDaysInMonth = GetBusinessDaysInCurrentMonth();
             var remainingBusinessDays = totalBusinessDaysInMonth - businessDaysUpToToday;
             
-            var requiredForEntireMonth = (int)Math.Ceiling(totalBusinessDaysInMonth * _complianceThreshold);
-            var requiredForRolling = (int)Math.Ceiling(businessDaysUpToToday * _complianceThreshold);
+            var requiredForEntireMonth = CalculateRequiredOfficeDays(totalBusinessDaysInMonth);
+            var requiredForRolling = CalculateRequiredOfficeDays(businessDaysUpToToday);
             var maxPossibleAttendance = attendance + remainingBusinessDays;
 
             if (attendance >= requiredForEntireMonth)

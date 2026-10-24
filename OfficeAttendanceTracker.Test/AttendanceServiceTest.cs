@@ -332,6 +332,76 @@ namespace OfficeAttendanceTracker.Test
 
         #endregion
 
+        #region CalculateRequiredOfficeDays Tests
+
+        [TestMethod]
+        public void CalculateRequiredOfficeDays_UsesDefaultThresholdAndRoundsUp()
+        {
+            // Arrange: January 2025 has 23 business days.
+            _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns([]);
+            var service = CreateService();
+
+            // Act
+            var requiredDays = service.CalculateRequiredOfficeDays(service.GetBusinessDaysInCurrentMonth());
+
+            // Assert
+            Assert.AreEqual(12, requiredDays);
+        }
+
+        [TestMethod]
+        public void CalculateRequiredOfficeDays_UsesConfiguredThreshold()
+        {
+            // Arrange
+            _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns([]);
+            var service = CreateService(BuildConfig(new Dictionary<string, string>
+            {
+                { "ComplianceThreshold", "0.6" }
+            }));
+
+            // Act
+            var requiredDays = service.CalculateRequiredOfficeDays(service.GetBusinessDaysInCurrentMonth());
+
+            // Assert
+            Assert.AreEqual(14, requiredDays);
+        }
+
+        [TestMethod]
+        public void CalculateRequiredOfficeDays_ExcludesWeekdayDaysOff()
+        {
+            // Arrange: Two weekday days off leave 21 business days.
+            _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns(
+            [
+                new() { Date = new DateTime(2025, 1, 6), IsOffice = false, IsDayOff = true },
+                new() { Date = new DateTime(2025, 1, 7), IsOffice = false, IsDayOff = true }
+            ]);
+            var service = CreateService();
+
+            // Act
+            var requiredDays = service.CalculateRequiredOfficeDays(service.GetBusinessDaysInCurrentMonth());
+
+            // Assert
+            Assert.AreEqual(11, requiredDays);
+        }
+
+        [TestMethod]
+        public void CalculateRequiredOfficeDays_ReturnsZeroWhenAllWeekdaysAreOff()
+        {
+            // Arrange
+            var records = Enumerable.Range(1, 31)
+                .Select(day => new AttendanceRecord { Date = new DateTime(2025, 1, day), IsOffice = false, IsDayOff = true })
+                .ToList();
+            _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns(records);
+            var service = CreateService();
+
+            // Act
+            var requiredDays = service.CalculateRequiredOfficeDays(service.GetBusinessDaysInCurrentMonth());
+
+            // Assert
+            Assert.AreEqual(0, requiredDays);
+        }
+
+        #endregion
+
         #region GetComplianceStatus Tests
 
         [TestMethod]

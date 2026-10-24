@@ -190,6 +190,8 @@ namespace OfficeAttendanceTracker.Desktop
                 }
 
                 var count = service.GetCurrentMonthAttendance();
+                var requiredDays = service.CalculateRequiredOfficeDays(service.GetBusinessDaysInCurrentMonth());
+                var targetPercentage = _settingsManager.CurrentSettings.ComplianceThreshold;
                 var currentMonth = DateTime.Today.ToString("MMMM yyyy");
 
                 // Update icon with the count number
@@ -211,16 +213,17 @@ namespace OfficeAttendanceTracker.Desktop
                 var complianceStatus = service.GetComplianceStatus();
                 var complianceText = GetComplianceStatusText(complianceStatus);
                 var officeStatusText = isInOffice ? "[YES] Currently in office" : "[NO] Not in office";
+                var attendanceText = $"Office days ({currentMonth}): {count}/{requiredDays} (target {targetPercentage:P0})";
                 
                 // Show warning if no networks configured
                 string message;
                 if (!service.IsReady)
                 {
-                    message = $"Office Days for {currentMonth}: {count} days\n[!] Not configured - Right-click and open Settings to configure networks then restart";
+                    message = $"{attendanceText}\n[!] Configure networks in Settings";
                 }
                 else
                 {
-                    message = $"Office Days for {currentMonth}: {count} days\n{officeStatusText}\n{complianceText}";
+                    message = $"{attendanceText}\n{officeStatusText}\n{complianceText}";
                 }
                 
                 _trayIcon.Text = message;
