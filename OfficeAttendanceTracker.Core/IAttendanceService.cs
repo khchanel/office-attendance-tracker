@@ -6,6 +6,9 @@
         bool CheckAttendance();
         bool TakeAttendance();
         void Reload();
+
+        /// <summary>Gets a detached monthly report using the current compliance threshold.</summary>
+        MonthlyAttendanceReport GetMonthlyReport(DateTime month);
         
         /// <summary>
         /// Indicates whether any office networks have been configured

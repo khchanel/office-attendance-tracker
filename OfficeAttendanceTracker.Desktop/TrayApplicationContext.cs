@@ -18,6 +18,7 @@ namespace OfficeAttendanceTracker.Desktop
         private readonly System.Windows.Forms.Timer _updateTimer;
         private int _lastCount = -1;
         private SettingsForm? _settingsForm;
+        private ReportsForm? _reportsForm;
 
         /// <summary>
         /// Gets the current AttendanceService instance (may be recreated on settings change)
@@ -40,6 +41,7 @@ namespace OfficeAttendanceTracker.Desktop
             };
 
             _trayIcon.ContextMenuStrip.Items.Add("Refresh", null, OnRefresh);
+            _trayIcon.ContextMenuStrip.Items.Add("Reports...", null, OnReports);
             _trayIcon.ContextMenuStrip.Items.Add("Settings...", null, OnSettings);
             _trayIcon.ContextMenuStrip.Items.Add(new ToolStripSeparator());
             _trayIcon.ContextMenuStrip.Items.Add("Exit", null, OnExit);
@@ -88,6 +90,7 @@ namespace OfficeAttendanceTracker.Desktop
         private void OnServiceRecreated(object? sender, IAttendanceService newService)
         {
             UpdateAttendanceCount(showBalloonTip: true);
+            _reportsForm?.RefreshReport();
         }
 
         private Color GetComplianceColor(ComplianceStatus status)
@@ -265,6 +268,21 @@ namespace OfficeAttendanceTracker.Desktop
             _settingsForm.ShowDialog();
         }
 
+        private void OnReports(object? sender, EventArgs e)
+        {
+            if (_reportsForm != null && !_reportsForm.IsDisposed)
+            {
+                if (_reportsForm.WindowState == FormWindowState.Minimized)
+                    _reportsForm.WindowState = FormWindowState.Normal;
+                _reportsForm.Activate();
+                return;
+            }
+
+            _reportsForm = new ReportsForm(_serviceProvider, _host.Services.GetRequiredService<IDateTimeProvider>());
+            _reportsForm.FormClosed += (_, _) => _reportsForm = null;
+            _reportsForm.Show();
+        }
+
         private void OnSettingsChanged(object? sender, AppSettings settings)
         {
             // Update timer interval if changed
@@ -292,6 +310,7 @@ namespace OfficeAttendanceTracker.Desktop
 
         private void OnExit(object? sender, EventArgs e)
         {
+            _reportsForm?.Close();
             _trayIcon.Visible = false;
             _updateTimer.Stop();
             _updateTimer.Dispose();

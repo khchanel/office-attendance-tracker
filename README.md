@@ -13,6 +13,7 @@ Automatically track your office attendance by detecting your presence on configu
 - **No Manual Check-In** - Attendance is recorded silently in the background
 - **Two Deployment Modes** - Windows Service (background) or Desktop App (system tray)
 - **Visual Feedback** - Color-coded compliance status in system tray
+- **Monthly Reports** - Interactive calendar, target progress, and filterable daily records (tray menu → Reports)
 - **Minimal Resource Usage** - Lightweight and efficient
 
 
@@ -53,6 +54,10 @@ dotnet publish OfficeAttendanceTracker.Service -c Release -o ./publish/service
 1. Download and run `OfficeAttendanceTracker.Desktop.exe`
 2. Configure office networks via Settings dialog (right-click tray icon)
 3. Click "Detect Current" to auto-detect your network, or enter manually in CIDR format
+
+Right-click the tray icon and choose **Reports...** to review monthly attendance. Navigate between months, select a calendar day, or filter the daily list by office, not in office, day off, or missing records. The calendar and progress bar show attendance against your current configured target. Reports are read-only; opening or refreshing them does not take attendance.
+
+Weekday days off reduce the monthly business-day denominator. Weekend office visits count toward office attendance, matching the tray total. Missing records indicate unavailable tracking data, and future days are shown separately. Historical targets use your current settings.
 
 ### Windows Service
 
