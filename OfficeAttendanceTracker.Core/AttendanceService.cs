@@ -91,10 +91,56 @@ namespace OfficeAttendanceTracker.Core
             _attendanceRecordStore.Reload();
         }
 
+        /// <inheritdoc />
+        public void SetDayOff(DateTime date, bool isDayOff)
+        {
+            _attendanceRecordStore.Reload();
+            _attendanceRecordStore.SetDayOff(isDayOff, date.Date);
+        }
+
+        /// <inheritdoc />
+        public void SetOfficeAttendance(DateTime date, bool isOffice)
+        {
+            if (isOffice && date.Date > _dateTimeProvider.Today)
+                throw new ArgumentOutOfRangeException(nameof(date), "Office attendance can only be recorded for today or earlier.");
+
+            _attendanceRecordStore.Reload();
+            _attendanceRecordStore.SetOfficeAttendance(isOffice, date.Date);
+        }
+
         public int GetCurrentMonthAttendance()
         {
             var currentMonthRecords = _attendanceRecordStore.GetMonth(_dateTimeProvider.Today);
             return currentMonthRecords.Count(r => r.IsOffice && !r.IsDayOff);
+        }
+
+        /// <inheritdoc />
+        public MonthlyAttendanceReport GetMonthlyReport(DateTime month)
+        {
+            var today = _dateTimeProvider.Today;
+            var first = new DateTime(month.Year, month.Month, 1);
+            var last = new DateTime(month.Year, month.Month, DateTime.DaysInMonth(month.Year, month.Month));
+            var records = _attendanceRecordStore.GetMonth(first)
+                .Select(record => record with { }).OrderBy(record => record.Date).ToArray();
+            var recordedDates = records.Select(record => record.Date.Date).ToHashSet();
+            var unrecorded = Enumerable.Range(1, last.Day)
+                .Select(day => new DateTime(first.Year, first.Month, day))
+                .Count(date => date <= today && date.IsWeekday() && !recordedDates.Contains(date));
+            var businessDays = CountBusinessDays(first, last, records.ToList());
+
+            return new MonthlyAttendanceReport
+            {
+                Month = first,
+                Records = Array.AsReadOnly(records),
+                OfficeDays = records.Count(record => record.IsOffice && !record.IsDayOff),
+                BusinessDays = businessDays,
+                RequiredOfficeDays = CalculateRequiredOfficeDays(businessDays),
+                UnrecordedBusinessDays = unrecorded,
+                DaysOff = records.Where(record => record.IsDayOff && record.Date.IsWeekday())
+                    .Select(record => record.Date.Date).Distinct().Count(),
+                Threshold = _complianceThreshold,
+                IsComplete = first < new DateTime(today.Year, today.Month, 1)
+            };
         }
 
         public int GetBusinessDaysInCurrentMonth()

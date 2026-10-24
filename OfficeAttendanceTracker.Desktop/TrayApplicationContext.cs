@@ -17,7 +17,9 @@ namespace OfficeAttendanceTracker.Desktop
         private readonly SettingsManager _settingsManager;
         private readonly System.Windows.Forms.Timer _updateTimer;
         private int _lastCount = -1;
+        private ComplianceStatus? _lastComplianceStatus;
         private SettingsForm? _settingsForm;
+        private ReportsForm? _reportsForm;
 
         /// <summary>
         /// Gets the current AttendanceService instance (may be recreated on settings change)
@@ -40,6 +42,7 @@ namespace OfficeAttendanceTracker.Desktop
             };
 
             _trayIcon.ContextMenuStrip.Items.Add("Refresh", null, OnRefresh);
+            _trayIcon.ContextMenuStrip.Items.Add("Reports...", null, OnReports);
             _trayIcon.ContextMenuStrip.Items.Add("Settings...", null, OnSettings);
             _trayIcon.ContextMenuStrip.Items.Add(new ToolStripSeparator());
             _trayIcon.ContextMenuStrip.Items.Add("Exit", null, OnExit);
@@ -88,6 +91,7 @@ namespace OfficeAttendanceTracker.Desktop
         private void OnServiceRecreated(object? sender, IAttendanceService newService)
         {
             UpdateAttendanceCount(showBalloonTip: true);
+            _reportsForm?.RefreshReport();
         }
 
         private Color GetComplianceColor(ComplianceStatus status)
@@ -167,7 +171,7 @@ namespace OfficeAttendanceTracker.Desktop
             }
         }
 
-        private void UpdateAttendanceCount(bool showBalloonTip = false)
+        private void UpdateAttendanceCount(bool showBalloonTip = false, bool recordAttendance = true)
         {
             try
             {
@@ -179,7 +183,7 @@ namespace OfficeAttendanceTracker.Desktop
 
                 // Immediately take attendance
                 bool isInOffice;
-                if (_settingsManager.CurrentSettings.EnableBackgroundWorker)
+                if (recordAttendance && _settingsManager.CurrentSettings.EnableBackgroundWorker)
                 {
                     isInOffice = service.TakeAttendance();
                 }
@@ -195,7 +199,8 @@ namespace OfficeAttendanceTracker.Desktop
                 var currentMonth = DateTime.Today.ToString("MMMM yyyy");
 
                 // Update icon with the count number
-                if (count != _lastCount)
+                var complianceStatus = service.GetComplianceStatus();
+                if (count != _lastCount || complianceStatus != _lastComplianceStatus)
                 {
                     var oldIcon = _trayIcon.Icon;
                     _trayIcon.Icon = CreateIconWithNumber(count);
@@ -207,10 +212,10 @@ namespace OfficeAttendanceTracker.Desktop
                     }
 
                     _lastCount = count;
+                    _lastComplianceStatus = complianceStatus;
                 }
 
                 // Build status messages
-                var complianceStatus = service.GetComplianceStatus();
                 var complianceText = GetComplianceStatusText(complianceStatus);
                 var officeStatusText = isInOffice ? "[YES] Currently in office" : "[NO] Not in office";
                 var attendanceText = $"Office days ({currentMonth}): {count}/{requiredDays} (target {targetPercentage:P0})";
@@ -265,6 +270,22 @@ namespace OfficeAttendanceTracker.Desktop
             _settingsForm.ShowDialog();
         }
 
+        private void OnReports(object? sender, EventArgs e)
+        {
+            if (_reportsForm != null && !_reportsForm.IsDisposed)
+            {
+                if (_reportsForm.WindowState == FormWindowState.Minimized)
+                    _reportsForm.WindowState = FormWindowState.Normal;
+                _reportsForm.Activate();
+                return;
+            }
+
+            _reportsForm = new ReportsForm(_serviceProvider, _host.Services.GetRequiredService<IDateTimeProvider>());
+            _reportsForm.RecordsChanged += (_, _) => UpdateAttendanceCount(recordAttendance: false);
+            _reportsForm.FormClosed += (_, _) => _reportsForm = null;
+            _reportsForm.Show();
+        }
+
         private void OnSettingsChanged(object? sender, AppSettings settings)
         {
             // Update timer interval if changed
@@ -292,6 +313,7 @@ namespace OfficeAttendanceTracker.Desktop
 
         private void OnExit(object? sender, EventArgs e)
         {
+            _reportsForm?.Close();
             _trayIcon.Visible = false;
             _updateTimer.Stop();
             _updateTimer.Dispose();

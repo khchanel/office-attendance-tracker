@@ -6,6 +6,16 @@
         bool CheckAttendance();
         bool TakeAttendance();
         void Reload();
+
+        /// <summary>Gets a detached monthly report using the current compliance threshold.</summary>
+        MonthlyAttendanceReport GetMonthlyReport(DateTime month);
+
+        /// <summary>Reloads records and saves a day-off change without altering office attendance.</summary>
+        void SetDayOff(DateTime date, bool isDayOff);
+
+        /// <summary>Reloads records and saves office attendance, preserving any day-off flag.</summary>
+        /// <exception cref="ArgumentOutOfRangeException">Office attendance is being added for a future date.</exception>
+        void SetOfficeAttendance(DateTime date, bool isOffice);
         
         /// <summary>
         /// Indicates whether any office networks have been configured
