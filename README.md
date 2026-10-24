@@ -23,6 +23,12 @@ Automatically track your office attendance by detecting your presence on configu
 **System Tray Icon:**  
 ![System Tray Icon](./docs/screenshots/Screenshot-tray.png)
 
+**Monthly Attendance Report:**
+
+Review monthly target progress, explore the attendance calendar, and filter daily records.
+
+![Monthly attendance report with target met, interactive calendar, and daily records](./docs/screenshots/Screenshot-MonthlyReport.png)
+
 **Settings:**  
 ![Settings UI](./docs/screenshots/Screenshot-SettingsUI.png)
 
