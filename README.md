@@ -61,13 +61,8 @@ dotnet publish OfficeAttendanceTracker.Service -c Release -o ./publish/service
 2. Configure office networks via Settings dialog (right-click tray icon)
 3. Click "Detect Current" to auto-detect your network, or enter manually in CIDR format
 
-Right-click the tray icon and choose **Reports...** to review monthly attendance. Navigate between months, select a calendar day, or filter the daily list by office, not in office, day off, or missing records. The calendar and progress bar show attendance against your current configured target. Opening or refreshing reports does not take attendance.
+Right-click the tray icon and choose **Reports...** to review monthly attendance.
 
-Select a calendar date or daily record and click **Mark as day off** or **Remove day off**. Changes save immediately and update the calendar, monthly target, compliance status, and tray. Past and future dates are supported. Existing office attendance is preserved when a day off is added or removed. Marking a date without a record creates a day-off record with no office attendance; removing the day-off flag retains that record.
-
-Use **Mark as in office** or **Remove office attendance** to correct attendance for today or a past date. Changes save immediately and preserve any day-off flag; days off remain excluded until that flag is removed. Future visits cannot be marked as completed attendance, although existing future attendance can be removed. Removing attendance retains the date's record as not in office. Automatic tracking can mark today in office again if office presence is detected.
-
-Weekday days off reduce the monthly business-day denominator. Weekend office visits count toward office attendance, matching the tray total. Missing records indicate unavailable tracking data, and future days are shown separately. Historical targets use your current settings.
 
 ### Windows Service
 
