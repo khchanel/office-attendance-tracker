@@ -11,9 +11,11 @@ public sealed class ReportsForm : Form
     private readonly IAttendanceServiceProvider _serviceProvider;
     private readonly IDateTimeProvider _clock;
     private readonly Font _calendarFont = new("Segoe UI", 9);
+    private readonly Font _metricFont = new("Segoe UI", 24, FontStyle.Bold);
     private readonly ToolTip _toolTip = new();
-    private readonly Button _dayOffButton = new() { Text = "Mark as day off", AutoSize = true, Height = 30, Enabled = false };
-    private readonly Button _officeButton = new() { Text = "Mark as in office", AutoSize = true, Height = 30, Enabled = false };
+    private readonly Button _dayOffButton = new() { Text = "Set day off", AutoSize = true, Height = 30, Enabled = false };
+    private readonly Button _officeButton = new() { Text = "Set in office", AutoSize = true, Height = 30, Enabled = false };
+    private readonly Button _clearButton = new() { Text = "Clear day", AutoSize = true, Height = 30, Enabled = false };
     private readonly DateTimePicker _month = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "MMMM yyyy", ShowUpDown = true, Width = 175 };
     private readonly ComboBox _filter = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 165 };
     private readonly TableLayoutPanel _calendar = new() { Dock = DockStyle.Fill, ColumnCount = 7, RowCount = 7, Padding = new Padding(6) };
@@ -25,10 +27,15 @@ public sealed class ReportsForm : Form
         RowHeadersVisible = false, AutoGenerateColumns = false, BackgroundColor = Color.White,
         BorderStyle = BorderStyle.None, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
     };
-    private readonly Label _summary = new() { AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(0, 10, 0, 10) };
+    private readonly Label _officeDays = new();
+    private readonly Label _requiredDays = new();
+    private readonly Label _businessDays = new();
+    private readonly Label _attendanceRate = new();
+    private readonly TableLayoutPanel _attendanceCard;
+    private readonly Label _configuredTarget = new() { AutoSize = true, Anchor = AnchorStyles.Right, ForeColor = Color.FromArgb(92, 104, 122) };
     private readonly Label _target = new() { AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(8, 6, 8, 6) };
     private readonly Label _detail = new() { AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(0, 8, 0, 0) };
-    private readonly TargetProgressBar _progress = new() { Dock = DockStyle.Fill, Height = 18 };
+    private readonly TargetProgressBar _progress = new() { Dock = DockStyle.Fill, Height = 6, Margin = new Padding(3, 3, 3, 12) };
     private MonthlyAttendanceReport? _report;
     private bool _loading;
     private bool _saving;
@@ -49,11 +56,16 @@ public sealed class ReportsForm : Form
         Font = new Font("Segoe UI", 10);
         BackColor = Color.FromArgb(246, 248, 251);
 
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 8, Padding = new Padding(20) };
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 7, Padding = new Padding(20) };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        for (var row = 0; row < 8; row++)
-            layout.RowStyles.Add(new RowStyle(row == 6 ? SizeType.Percent : SizeType.AutoSize, row == 6 ? 100 : 0));
-        layout.Controls.Add(new Label { Text = "Monthly attendance", AutoSize = true, Font = new Font(Font.FontFamily, 20, FontStyle.Bold) }, 0, 0);
+        for (var row = 0; row < 7; row++)
+            layout.RowStyles.Add(new RowStyle(row == 5 ? SizeType.Percent : SizeType.AutoSize, row == 5 ? 100 : 0));
+        var heading = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
+        heading.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        heading.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        heading.Controls.Add(new Label { Text = "Monthly attendance", AutoSize = true, Font = new Font(Font.FontFamily, 20, FontStyle.Bold) }, 0, 0);
+        heading.Controls.Add(_configuredTarget, 1, 0);
+        layout.Controls.Add(heading, 0, 0);
 
         var toolbar = new TableLayoutPanel
         {
@@ -78,22 +90,31 @@ public sealed class ReportsForm : Form
         _dayOffButton.Click += (_, _) => ToggleDayOff();
         editActions.Controls.Add(_officeButton);
         _officeButton.Click += (_, _) => ToggleOfficeAttendance();
+        editActions.Controls.Add(_clearButton);
+        _clearButton.Click += (_, _) => SaveSelectedDate((service, date, _) => service.ClearDay(date), "clear day");
         toolbar.Controls.Add(readActions, 0, 0);
         toolbar.Controls.Add(editActions, 1, 0);
         layout.Controls.Add(toolbar, 0, 1);
-        layout.Controls.Add(_summary, 0, 2);
+        var insights = new TableLayoutPanel
+        {
+            AutoSize = true, Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1,
+            Margin = new Padding(0, 12, 0, 10)
+        };
+        for (var column = 0; column < 4; column++)
+            insights.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        insights.Controls.Add(CreateInsightCard("In office", _officeDays, Color.White), 0, 0);
+        insights.Controls.Add(CreateInsightCard("Required days", _requiredDays, Color.White), 1, 0);
+        insights.Controls.Add(CreateInsightCard("Business days", _businessDays, Color.White), 2, 0);
+        _attendanceCard = CreateInsightCard("Attendance", _attendanceRate, Color.White);
+        insights.Controls.Add(_attendanceCard, 3, 0);
+        layout.Controls.Add(insights, 0, 2);
         layout.Controls.Add(_target, 0, 3);
         layout.Controls.Add(_progress, 0, 4);
-        layout.Controls.Add(new Label
-        {
-            Text = "Target uses your current settings. Weekday days off are excluded. Weekend office visits count, as in the tray total.",
-            AutoSize = true, Padding = new Padding(0, 8, 0, 10), Dock = DockStyle.Fill
-        }, 0, 5);
 
         var body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
         body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 56));
         body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 44));
-        var calendarGroup = new GroupBox { Text = "Calendar - select a day to review", Dock = DockStyle.Fill, Padding = new Padding(8) };
+        var calendarGroup = new GroupBox { Text = "Calendar", Dock = DockStyle.Fill, Padding = new Padding(8) };
         calendarGroup.Controls.Add(_calendar);
         for (var column = 0; column < 7; column++)
             _calendar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / 7));
@@ -103,25 +124,23 @@ public sealed class ReportsForm : Form
         body.Controls.Add(calendarGroup, 0, 0);
 
         var recordsGroup = new GroupBox { Text = "Daily records", Dock = DockStyle.Fill, Padding = new Padding(10) };
-        var recordsLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+        var recordsLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
         recordsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        recordsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         recordsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         recordsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _filter.Items.AddRange(["All days", "Office", "Not in office", "Day off", "No record"]);
         _filter.SelectedIndex = 0;
         recordsLayout.Controls.Add(_filter, 0, 0);
-        recordsLayout.Controls.Add(new Label { Text = "No record means no tracking data; it does not confirm absence.", AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(0, 6, 0, 6) }, 0, 1);
         _records.Columns.Add(new DataGridViewTextBoxColumn { Name = "Date", HeaderText = "Date", FillWeight = 55 });
         _records.Columns.Add(new DataGridViewTextBoxColumn { Name = "Day", HeaderText = "Day", FillWeight = 45 });
         _records.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = "Record", FillWeight = 95 });
         foreach (DataGridViewColumn column in _records.Columns)
             column.SortMode = DataGridViewColumnSortMode.NotSortable;
-        recordsLayout.Controls.Add(_records, 0, 2);
+        recordsLayout.Controls.Add(_records, 0, 1);
         recordsGroup.Controls.Add(recordsLayout);
         body.Controls.Add(recordsGroup, 1, 0);
-        layout.Controls.Add(body, 0, 6);
-        layout.Controls.Add(_detail, 0, 7);
+        layout.Controls.Add(body, 0, 5);
+        layout.Controls.Add(_detail, 0, 6);
         Controls.Add(layout);
 
         _month.ValueChanged += (_, _) => RefreshReport();
@@ -138,6 +157,7 @@ public sealed class ReportsForm : Form
         {
             _toolTip.Dispose();
             _calendarFont.Dispose();
+            _metricFont.Dispose();
         }
         base.Dispose(disposing);
     }
@@ -149,11 +169,45 @@ public sealed class ReportsForm : Form
         return button;
     }
 
+    private TableLayoutPanel CreateInsightCard(string title, Label value, Color color)
+    {
+        var card = new TableLayoutPanel
+        {
+            AutoSize = true, Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
+            BackColor = color, Padding = new Padding(14, 10, 14, 10), Margin = new Padding(4)
+        };
+        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        card.Controls.Add(new Label
+        {
+            Text = title, AutoSize = true, Dock = DockStyle.Fill,
+            ForeColor = Color.FromArgb(72, 84, 102)
+        }, 0, 0);
+        value.Text = "--";
+        value.AutoSize = true;
+        value.Dock = DockStyle.Fill;
+        value.Font = _metricFont;
+        value.ForeColor = Color.FromArgb(30, 47, 72);
+        value.AccessibleName = title;
+        card.Controls.Add(value, 0, 1);
+        return card;
+    }
+
     private void MoveMonth(int offset)
     {
         var next = _month.Value.AddMonths(offset);
         if (next >= _month.MinDate && next <= _month.MaxDate)
             _month.Value = next;
+    }
+
+    private void ApplyComplianceColors(ComplianceColors colors)
+    {
+        _target.BackColor = colors.Background;
+        _target.ForeColor = colors.Foreground;
+        _progress.ForeColor = colors.Accent;
+        _attendanceCard.BackColor = colors.Background;
+        _attendanceRate.ForeColor = colors.Foreground;
     }
 
     /// <summary>Reloads stored data without taking attendance or writing records.</summary>
@@ -167,19 +221,22 @@ public sealed class ReportsForm : Form
             var service = _serviceProvider.Current;
             service.Reload();
             _report = service.GetMonthlyReport(_month.Value);
-            var rate = _report.AttendanceRate is { } value ? value.ToString("P0") : "N/A";
-            _summary.Text = $"{_report.OfficeDays} office days     |     {_report.BusinessDays} business days     |     {_report.DaysOff} days off     |     {rate} of month     |     {_report.UnrecordedBusinessDays} unrecorded weekdays to date";
+            var rate = _report.AttendanceRate is { } value ? value.ToString("P2") : "N/A";
+            _officeDays.Text = _report.OfficeDays.ToString();
+            _requiredDays.Text = _report.RequiredOfficeDays.ToString();
+            _businessDays.Text = _report.BusinessDays.ToString();
+            _attendanceRate.Text = rate;
+            _configuredTarget.Text = $"Required: {_report.Threshold:P2}";
             var needed = Math.Max(0, _report.RequiredOfficeDays - _report.OfficeDays);
             var missedTarget = _report.IsComplete && !_report.IsTargetMet;
-            var status = missedTarget ? "Non-compliant" : _report.IsTargetMet ? "Target met" : "In progress";
-            var outcome = missedTarget ? $"Month ended: {needed} {(needed == 1 ? "day" : "days")} short" :
-                _report.IsTargetMet ? (_report.IsComplete ? "Month ended: compliant" : "Monthly target secured") : $"{needed} more needed";
-            _target.BackColor = missedTarget ? Color.FromArgb(253, 228, 228) :
-                _report.IsTargetMet ? OfficeColor : AwayColor;
-            _target.ForeColor = missedTarget ? Color.FromArgb(160, 28, 38) :
-                _report.IsTargetMet ? Color.FromArgb(25, 102, 63) : Color.FromArgb(130, 72, 12);
-            _target.Text = $"{status} | Monthly target: {_report.OfficeDays} / {_report.RequiredOfficeDays} office days ({_report.Threshold:P0}) - {outcome}";
-            _progress.ForeColor = _target.ForeColor;
+            var isCurrentMonth = _report.Month.Year == _clock.Today.Year && _report.Month.Month == _clock.Today.Month;
+            var compliance = _report.IsTargetMet ? ComplianceStatus.Secured :
+                missedTarget ? ComplianceStatus.Critical :
+                isCurrentMonth ? service.GetComplianceStatus() : ComplianceStatus.Compliant;
+            var outcome = missedTarget ? $"Target missed: {needed} {(needed == 1 ? "day" : "days")} short" :
+                _report.IsTargetMet ? "Monthly target met" : $"{needed} more office {(needed == 1 ? "day" : "days")} needed";
+            ApplyComplianceColors(ComplianceColors.For(compliance));
+            _target.Text = outcome;
             _progress.Value = _report.RequiredOfficeDays == 0 ? 1000 :
                 (int)Math.Min(1000, 1000d * _report.OfficeDays / _report.RequiredOfficeDays);
             PopulateCalendar();
@@ -190,15 +247,16 @@ public sealed class ReportsForm : Form
             _report = null;
             ClearCalendar();
             _records.Rows.Clear();
-            _summary.Text = "Report unavailable";
-            _target.Text = "Use Refresh to try again.";
-            _target.BackColor = SystemColors.Control;
-            _target.ForeColor = SystemColors.ControlText;
-            _progress.ForeColor = SystemColors.ControlDark;
+            foreach (var value in new[] { _officeDays, _requiredDays, _businessDays, _attendanceRate })
+                value.Text = "--";
+            _configuredTarget.Text = string.Empty;
+            _target.Text = "Report unavailable. Refresh to retry.";
+            ApplyComplianceColors(ComplianceColors.Neutral);
             _progress.Value = 0;
             _detail.Text = $"Could not load attendance: {ex.Message}";
             _dayOffButton.Enabled = false;
             _officeButton.Enabled = false;
+            _clearButton.Enabled = false;
         }
         finally
         {
@@ -229,6 +287,7 @@ public sealed class ReportsForm : Form
         _saving = true;
         _dayOffButton.Enabled = false;
         _officeButton.Enabled = false;
+        _clearButton.Enabled = false;
         try
         {
             save(_serviceProvider.Current, date, record);
@@ -243,6 +302,7 @@ public sealed class ReportsForm : Form
             _saving = false;
             _dayOffButton.Enabled = _report != null && _records.CurrentRow?.Tag is DateTime;
             _officeButton.Enabled = _dayOffButton.Enabled && (date <= _clock.Today || record?.IsOffice == true);
+            _clearButton.Enabled = _dayOffButton.Enabled && record != null;
         }
 
         RefreshReport();
@@ -286,10 +346,10 @@ public sealed class ReportsForm : Form
             var status = Status(date);
             var caption = status switch
             {
-                "Not in office" => "Away",
-                "Day off" => "Off",
+                "Not in office" => "WFH",
+                "Day off" => "Day Off",
                 "Upcoming" => "Future",
-                "Weekend" => "W/end",
+                "Weekend" => string.Empty,
                 "No record" => "No data",
                 _ => status
             };
@@ -351,24 +411,18 @@ public sealed class ReportsForm : Form
             ? _report?.Records.FirstOrDefault(record => record.Date.Date == selectedDate) : null;
         var isDayOff = record?.IsDayOff ?? false;
         _dayOffButton.Enabled = _report != null && date.HasValue && !_saving;
-        _dayOffButton.Text = isDayOff ? "Remove day off" : "Mark as day off";
+        _dayOffButton.Text = isDayOff ? "Remove day off" : "Set day off";
         _officeButton.Enabled = _dayOffButton.Enabled && (date <= _clock.Today || record?.IsOffice == true);
-        _officeButton.Text = record?.IsOffice == true ? "Remove office attendance" : "Mark as in office";
-        _toolTip.SetToolTip(_officeButton, date is { } officeDate
-            ? $"{officeDate:D}. " + (officeDate > _clock.Today
-                ? "Future visits cannot be marked as completed attendance. Existing future attendance can be removed."
-                : isDayOff
-                    ? "The day-off flag is preserved. Remove it to include this office attendance in totals."
-                    : "Changes save immediately. Automatic tracking may mark today in office again if office presence is detected.")
-            : "Select a calendar day or daily record first.");
-        _toolTip.SetToolTip(_dayOffButton, date is { } actionDate
-            ? $"{actionDate:D}. " + (actionDate.IsWeekday()
-                ? "Weekday days off are excluded from the monthly target. Office attendance is preserved."
-                : "Weekend days off do not reduce the monthly target. Office attendance is preserved.")
-            : "Select a calendar day or daily record first.");
+        _officeButton.Text = record?.IsOffice == true ? "Remove office" : "Set in office";
+        _clearButton.Enabled = _dayOffButton.Enabled && record != null;
+        _toolTip.SetToolTip(_clearButton, "Clear all entries for this day.");
+        _toolTip.SetToolTip(_officeButton, record?.IsOffice == true
+            ? "Remove this office visit." : "Mark this day as in office.");
+        _toolTip.SetToolTip(_dayOffButton, isDayOff
+            ? "Remove this day off." : "Mark this as a day off.");
         _detail.Text = date is { } selected
-            ? $"{selected:D}: {Status(selected)}.  * Today. Select a calendar day or filter the list to review records."
-            : "No days match this filter. Select another filter to review records.";
+            ? $"{selected:ddd, dd MMM yyyy} | {Status(selected)}{(selected == _clock.Today ? " | Today" : "")}"
+            : "No matching days";
         foreach (var button in _calendar.Controls.OfType<Button>())
         {
             var isSelected = Equals(button.Tag, date);
