@@ -108,6 +108,13 @@ namespace OfficeAttendanceTracker.Core
             _attendanceRecordStore.SetOfficeAttendance(isOffice, date.Date);
         }
 
+        /// <inheritdoc />
+        public void ClearDay(DateTime date)
+        {
+            _attendanceRecordStore.Reload();
+            _attendanceRecordStore.ClearDay(date.Date);
+        }
+
         public int GetCurrentMonthAttendance()
         {
             var currentMonthRecords = _attendanceRecordStore.GetMonth(_dateTimeProvider.Today);

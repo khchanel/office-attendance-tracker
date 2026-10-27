@@ -41,6 +41,11 @@ namespace OfficeAttendanceTracker.Core
         void SetOfficeAttendance(bool isOffice, DateTime date);
 
         /// <summary>
+        /// Removes and immediately persists all records for a date. An unrecorded date has no effect.
+        /// </summary>
+        void ClearDay(DateTime date);
+
+        /// <summary>
         /// Clear storage and reset
         /// </summary>
         void Clear();

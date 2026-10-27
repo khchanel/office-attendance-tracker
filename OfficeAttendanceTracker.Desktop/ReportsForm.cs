@@ -15,6 +15,7 @@ public sealed class ReportsForm : Form
     private readonly ToolTip _toolTip = new();
     private readonly Button _dayOffButton = new() { Text = "Set day off", AutoSize = true, Height = 30, Enabled = false };
     private readonly Button _officeButton = new() { Text = "Set in office", AutoSize = true, Height = 30, Enabled = false };
+    private readonly Button _clearButton = new() { Text = "Clear day", AutoSize = true, Height = 30, Enabled = false };
     private readonly DateTimePicker _month = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "MMMM yyyy", ShowUpDown = true, Width = 175 };
     private readonly ComboBox _filter = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 165 };
     private readonly TableLayoutPanel _calendar = new() { Dock = DockStyle.Fill, ColumnCount = 7, RowCount = 7, Padding = new Padding(6) };
@@ -89,6 +90,8 @@ public sealed class ReportsForm : Form
         _dayOffButton.Click += (_, _) => ToggleDayOff();
         editActions.Controls.Add(_officeButton);
         _officeButton.Click += (_, _) => ToggleOfficeAttendance();
+        editActions.Controls.Add(_clearButton);
+        _clearButton.Click += (_, _) => SaveSelectedDate((service, date, _) => service.ClearDay(date), "clear day");
         toolbar.Controls.Add(readActions, 0, 0);
         toolbar.Controls.Add(editActions, 1, 0);
         layout.Controls.Add(toolbar, 0, 1);
@@ -253,6 +256,7 @@ public sealed class ReportsForm : Form
             _detail.Text = $"Could not load attendance: {ex.Message}";
             _dayOffButton.Enabled = false;
             _officeButton.Enabled = false;
+            _clearButton.Enabled = false;
         }
         finally
         {
@@ -283,6 +287,7 @@ public sealed class ReportsForm : Form
         _saving = true;
         _dayOffButton.Enabled = false;
         _officeButton.Enabled = false;
+        _clearButton.Enabled = false;
         try
         {
             save(_serviceProvider.Current, date, record);
@@ -297,6 +302,7 @@ public sealed class ReportsForm : Form
             _saving = false;
             _dayOffButton.Enabled = _report != null && _records.CurrentRow?.Tag is DateTime;
             _officeButton.Enabled = _dayOffButton.Enabled && (date <= _clock.Today || record?.IsOffice == true);
+            _clearButton.Enabled = _dayOffButton.Enabled && record != null;
         }
 
         RefreshReport();
@@ -340,10 +346,10 @@ public sealed class ReportsForm : Form
             var status = Status(date);
             var caption = status switch
             {
-                "Not in office" => "Away",
-                "Day off" => "Off",
+                "Not in office" => "WFH",
+                "Day off" => "Day Off",
                 "Upcoming" => "Future",
-                "Weekend" => "W/end",
+                "Weekend" => string.Empty,
                 "No record" => "No data",
                 _ => status
             };
@@ -408,18 +414,12 @@ public sealed class ReportsForm : Form
         _dayOffButton.Text = isDayOff ? "Remove day off" : "Set day off";
         _officeButton.Enabled = _dayOffButton.Enabled && (date <= _clock.Today || record?.IsOffice == true);
         _officeButton.Text = record?.IsOffice == true ? "Remove office" : "Set in office";
-        _toolTip.SetToolTip(_officeButton, date is { } officeDate
-            ? $"{officeDate:D}. " + (officeDate > _clock.Today
-                ? "Future visits cannot be marked as completed attendance. Existing future attendance can be removed."
-                : isDayOff
-                    ? "The day-off flag is preserved. Remove it to include this office attendance in totals."
-                    : "Changes save immediately. Automatic tracking may mark today in office again if office presence is detected.")
-            : "Select a calendar day or daily record first.");
-        _toolTip.SetToolTip(_dayOffButton, date is { } actionDate
-            ? $"{actionDate:D}. " + (actionDate.IsWeekday()
-                ? "Weekday days off are excluded from the monthly target. Office attendance is preserved."
-                : "Weekend days off do not reduce the monthly target. Office attendance is preserved.")
-            : "Select a calendar day or daily record first.");
+        _clearButton.Enabled = _dayOffButton.Enabled && record != null;
+        _toolTip.SetToolTip(_clearButton, "Clear all entries for this day.");
+        _toolTip.SetToolTip(_officeButton, record?.IsOffice == true
+            ? "Remove this office visit." : "Mark this day as in office.");
+        _toolTip.SetToolTip(_dayOffButton, isDayOff
+            ? "Remove this day off." : "Mark this as a day off.");
         _detail.Text = date is { } selected
             ? $"{selected:ddd, dd MMM yyyy} | {Status(selected)}{(selected == _clock.Today ? " | Today" : "")}"
             : "No matching days";

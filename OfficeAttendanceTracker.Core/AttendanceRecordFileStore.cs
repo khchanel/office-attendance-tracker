@@ -106,6 +106,33 @@ namespace OfficeAttendanceTracker.Core
         public void SetOfficeAttendance(bool isOffice, DateTime date)
             => SetRecordFlag(isOffice, date, static record => record.IsOffice, static (record, value) => record.IsOffice = value);
 
+        /// <inheritdoc />
+        public void ClearDay(DateTime date)
+        {
+            lock (_lock)
+            {
+                if (!Records.Exists(record => record.Date.Date == date.Date))
+                    return;
+
+                var previousRecords = Records.ToList();
+                var wasDirty = _isDirty;
+                Records.RemoveAll(record => record.Date.Date == date.Date);
+                _isDirty = true;
+
+                try
+                {
+                    SaveChanges();
+                }
+                catch
+                {
+                    // Restore the records so auto-save cannot retry a failed deletion.
+                    Records = previousRecords;
+                    _isDirty = wasDirty;
+                    throw;
+                }
+            }
+        }
+
         private void SetRecordFlag(bool value, DateTime date, Func<AttendanceRecord, bool> getFlag, Action<AttendanceRecord, bool> setFlag)
         {
             lock (_lock)
