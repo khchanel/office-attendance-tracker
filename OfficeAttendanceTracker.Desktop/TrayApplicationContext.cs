@@ -94,18 +94,6 @@ namespace OfficeAttendanceTracker.Desktop
             _reportsForm?.RefreshReport();
         }
 
-        private Color GetComplianceColor(ComplianceStatus status)
-        {
-            return status switch
-            {
-                ComplianceStatus.Secured => Color.FromArgb(34, 139, 34),   // Green
-                ComplianceStatus.Compliant => Color.FromArgb(0, 120, 215), // Blue
-                ComplianceStatus.Warning => Color.FromArgb(255, 140, 0),   // Orange
-                ComplianceStatus.Critical => Color.FromArgb(220, 20, 60),  // Red
-                _ => Color.Gray
-            };
-        }
-
         private static string GetComplianceStatusText(ComplianceStatus status)
         {
             return status switch
@@ -133,7 +121,7 @@ namespace OfficeAttendanceTracker.Desktop
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
 
                 var status = AttendanceService.GetComplianceStatus();
-                var backgroundColor = GetComplianceColor(status);
+                var backgroundColor = ComplianceColors.For(status).Accent;
 
                 using (SolidBrush bgBrush = new SolidBrush(backgroundColor))
                 {
@@ -196,6 +184,7 @@ namespace OfficeAttendanceTracker.Desktop
                 var count = service.GetCurrentMonthAttendance();
                 var requiredDays = service.CalculateRequiredOfficeDays(service.GetBusinessDaysInCurrentMonth());
                 var targetPercentage = _settingsManager.CurrentSettings.ComplianceThreshold;
+                var attendancePercentage = 1.0 * count / service.GetBusinessDaysInCurrentMonth();
                 var currentMonth = DateTime.Today.ToString("MMMM yyyy");
 
                 // Update icon with the count number
@@ -218,7 +207,7 @@ namespace OfficeAttendanceTracker.Desktop
                 // Build status messages
                 var complianceText = GetComplianceStatusText(complianceStatus);
                 var officeStatusText = isInOffice ? "[YES] Currently in office" : "[NO] Not in office";
-                var attendanceText = $"Office days ({currentMonth}): {count}/{requiredDays} (target {targetPercentage:P0})";
+                var attendanceText = $"Office days ({currentMonth}): {count}/{requiredDays} ({attendancePercentage:P2})";
                 
                 // Show warning if no networks configured
                 string message;
