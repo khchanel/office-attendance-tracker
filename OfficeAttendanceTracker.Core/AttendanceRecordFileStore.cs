@@ -101,16 +101,24 @@ namespace OfficeAttendanceTracker.Core
         /// <inheritdoc />
         public void RecordOfficeDetection(DateTimeOffset detectedAt, DateTimeOffset? previousDetection)
         {
+            detectedAt = detectedAt.TruncateToSecond();
+            previousDetection = previousDetection?.TruncateToSecond();
             lock (_lock)
             {
                 var record = GetDate(detectedAt.Date);
+                var firstDetection = record?.FirstOfficeDetectionAt?.TruncateToSecond();
+                var lastDetection = record?.LastOfficeDetectionAt?.TruncateToSecond();
+                if (detectedAt < firstDetection || detectedAt < lastDetection)
+                    return;
+
                 var previous = record is null ? null : record with { };
                 var wasDirty = _isDirty;
                 record ??= Add(false, detectedAt.Date);
-                var creditedSeconds = previousDetection is { } start && start == record.LastOfficeDetectionAt
-                    ? (detectedAt - start).Ticks / (decimal)TimeSpan.TicksPerSecond : 0m;
+                var creditedSeconds = previousDetection is { } start && start.Date == detectedAt.Date &&
+                    start == lastDetection && start < detectedAt
+                    ? (detectedAt - start).Ticks / TimeSpan.TicksPerSecond : 0m;
                 record.IsOffice = true;
-                record.FirstOfficeDetectionAt ??= detectedAt;
+                record.FirstOfficeDetectionAt = firstDetection ?? detectedAt;
                 record.LastOfficeDetectionAt = detectedAt;
                 record.TrackedOfficeSeconds = (record.TrackedOfficeSeconds ?? 0m) + creditedSeconds;
                 _isDirty = true;

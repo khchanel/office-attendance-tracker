@@ -249,16 +249,16 @@ namespace OfficeAttendanceTracker.Core
         {
             var previous = _previousDetection;
             _previousDetection = null;
-            if (!CheckAttendance())
+            var isAtOffice = CheckAttendance();
+            var now = _dateTimeProvider.Now.TruncateToSecond();
+            if (!isAtOffice)
             {
-                var today = _dateTimeProvider.Today;
-                if (_attendanceRecordStore.GetDate(today) is null)
-                    _attendanceRecordStore.Add(false, today);
+                if (_attendanceRecordStore.GetDate(now.Date) is null)
+                    _attendanceRecordStore.Add(false, now.Date);
                 _attendanceRecordStore.SaveChanges();
                 return false;
             }
 
-            var now = _dateTimeProvider.Now;
             var suspendedTime = _dateTimeProvider.SuspendedTime;
             DateTimeOffset? creditedFrom = null;
             if (previous is { } last && now.Date == last.DetectedAt.Date)
@@ -278,14 +278,15 @@ namespace OfficeAttendanceTracker.Core
 
         private bool TakeUntimedAttendance()
         {
-            var attendance = _attendanceRecordStore.GetToday();
+            var isAtOfficeNow = CheckAttendance();
+            var date = _dateTimeProvider.Today;
+            var attendance = _attendanceRecordStore.GetDate(date);
             if (attendance == null)
             {
                 _logger.LogInformation("saving first record for the day");
-                attendance = _attendanceRecordStore.Add(false, _dateTimeProvider.Today);
+                attendance = _attendanceRecordStore.Add(false, date);
             }
 
-            var isAtOfficeNow = CheckAttendance();
             if (isAtOfficeNow)
             {
                 _logger.LogInformation("Detected in office");
@@ -293,7 +294,7 @@ namespace OfficeAttendanceTracker.Core
                 if (!attendance.IsOffice)
                 {
                     _logger.LogInformation("updating office attendance for today");
-                    _attendanceRecordStore.Update(true, _dateTimeProvider.Today);
+                    _attendanceRecordStore.Update(true, date);
                 }
             }
             else

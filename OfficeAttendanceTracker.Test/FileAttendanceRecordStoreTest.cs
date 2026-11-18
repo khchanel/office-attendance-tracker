@@ -1,6 +1,7 @@
 using CsvHelper;
 using OfficeAttendanceTracker.Core;
 using System.Globalization;
+using System.Text.Json;
 
 namespace OfficeAttendanceTracker.Test
 {
@@ -16,12 +17,41 @@ namespace OfficeAttendanceTracker.Test
         public class FileAttendanceRecordStoreTest : AttendanceRecordStoreTestBase
         {
             public override IAttendanceRecordStore CreateStore() => new AttendanceRecordJsonFileStore();
+
+            [TestMethod]
+            public void JsonTimestamp_WritesWholeSecondsAfterReadingFractionalSeconds()
+            {
+                const string legacy = """
+                    {"Date":"2026-11-18","IsOffice":true,"FirstOfficeDetectionAt":"2026-11-18T09:00:00.1234567+11:00"}
+                    """;
+                var record = JsonSerializer.Deserialize<AttendanceRecord>(legacy);
+
+                using var rewritten = JsonDocument.Parse(JsonSerializer.Serialize(record));
+
+                Assert.AreEqual("2026-11-18T09:00:00+11:00",
+                    rewritten.RootElement.GetProperty("FirstOfficeDetectionAt").GetString());
+            }
         }
 
         [TestClass]
         public class CsvAttendanceRecordStoreTest : AttendanceRecordStoreTestBase
         {
             public override IAttendanceRecordStore CreateStore() => new AttendanceRecordCsvFileStore();
+
+            [TestMethod]
+            public void CsvTimestamp_WritesWholeSecondsAfterReadingFractionalSeconds()
+            {
+                using var source = new StringReader("Date,IsOffice,IsDayOff,FirstOfficeDetectionAt\r\n2026-11-18,True,False,2026-11-18T09:00:00.1234567+11:00\r\n");
+                using var reader = new CsvReader(source, CultureInfo.InvariantCulture);
+                reader.Context.RegisterClassMap<AttendanceRecordMap>();
+                using var output = new StringWriter(CultureInfo.InvariantCulture);
+                using var writer = new CsvWriter(output, CultureInfo.InvariantCulture);
+                writer.Context.RegisterClassMap<AttendanceRecordMap>();
+
+                writer.WriteRecords(reader.GetRecords<AttendanceRecord>());
+
+                StringAssert.Contains(output.ToString(), "2026-11-18T09:00:00+11:00");
+            }
 
             [TestMethod]
             public void LegacyCsvRow_LoadsWithoutTrackingData()
@@ -55,12 +85,13 @@ namespace OfficeAttendanceTracker.Test
         [TestMethod]
         public void RecordOfficeDetection_RoundTripsIntervalAndOffset()
         {
-            var first = new DateTimeOffset(2025, 1, 8, 9, 0, 0, TimeSpan.FromHours(11)).AddTicks(1234);
+            var first = new DateTimeOffset(2025, 1, 8, 9, 0, 0, TimeSpan.FromHours(11));
             var second = first.AddMinutes(5);
             var afterAway = second.AddHours(2);
-            _attendanceService.RecordOfficeDetection(first, null);
-            _attendanceService.RecordOfficeDetection(second, first);
-            _attendanceService.RecordOfficeDetection(afterAway, null);
+            _attendanceService.RecordOfficeDetection(first.AddTicks(1234), null);
+            _attendanceService.Reload();
+            _attendanceService.RecordOfficeDetection(second.AddTicks(2345), first.AddTicks(1234));
+            _attendanceService.RecordOfficeDetection(afterAway.AddTicks(3456), null);
 
             _attendanceService.Reload();
             var record = _attendanceService.GetDate(first.Date);
@@ -68,6 +99,36 @@ namespace OfficeAttendanceTracker.Test
             Assert.AreEqual((true, (DateTimeOffset?)first, (DateTimeOffset?)afterAway, (decimal?)300, (TimeSpan?)first.Offset),
                 (record?.IsOffice == true, record?.FirstOfficeDetectionAt, record?.LastOfficeDetectionAt,
                     record?.TrackedOfficeSeconds, record?.FirstOfficeDetectionAt?.Offset));
+        }
+
+        [TestMethod]
+        public void RecordOfficeDetection_StartsNewRecordAtLocalMidnight()
+        {
+            var beforeMidnight = new DateTimeOffset(2026, 11, 18, 23, 58, 0, TimeSpan.FromHours(11));
+            var afterMidnight = beforeMidnight.AddMinutes(5);
+            var nextPoll = afterMidnight.AddMinutes(5);
+
+            _attendanceService.RecordOfficeDetection(beforeMidnight, null);
+            _attendanceService.RecordOfficeDetection(afterMidnight, beforeMidnight);
+            _attendanceService.RecordOfficeDetection(nextPoll, afterMidnight);
+            _attendanceService.Reload();
+            var previousDay = _attendanceService.GetDate(beforeMidnight.Date);
+            var newDay = _attendanceService.GetDate(afterMidnight.Date);
+
+            Assert.AreEqual((beforeMidnight, afterMidnight, nextPoll, 300m),
+                (previousDay!.LastOfficeDetectionAt!.Value, newDay!.FirstOfficeDetectionAt!.Value,
+                    newDay.LastOfficeDetectionAt!.Value, newDay.TrackedOfficeSeconds!.Value));
+        }
+
+        [TestMethod]
+        public void RecordOfficeDetection_DoesNotReplaceLastDetectionWhenClockGoesBack()
+        {
+            var morning = new DateTimeOffset(2026, 11, 19, 9, 0, 0, TimeSpan.FromHours(11));
+            _attendanceService.RecordOfficeDetection(morning, null);
+
+            _attendanceService.RecordOfficeDetection(morning.AddHours(-9).AddMinutes(10), morning);
+
+            Assert.AreEqual(morning, _attendanceService.GetDate(morning.Date)?.LastOfficeDetectionAt);
         }
 
         [TestMethod]
