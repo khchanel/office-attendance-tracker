@@ -15,6 +15,10 @@ namespace OfficeAttendanceTracker.Core
         private readonly IAttendanceRecordStore _attendanceRecordStore;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly double _complianceThreshold;
+        private readonly OfficeDayPolicy _officeDayPolicy;
+        private readonly TimeSpan _maximumPollGap;
+        private readonly object _pollLock = new();
+        private (DateTimeOffset DetectedAt, TimeSpan SuspendedTime)? _previousDetection;
 
 
         public AttendanceService(ILogger<AttendanceService> logger,
@@ -30,6 +34,16 @@ namespace OfficeAttendanceTracker.Core
             _attendanceRecordStore = attendanceRecordStore;
             _dateTimeProvider = dateTimeProvider ?? new DefaultDateTimeProvider();
             _complianceThreshold = config.GetValue("ComplianceThreshold", 0.5); // Default 50%
+            var mode = config.GetValue("OfficeTimeTrackingMode", OfficeTimeTrackingMode.Off);
+            var minimumHours = config.GetValue("MinimumOfficeHours", AppSettings.DefaultMinimumOfficeHours);
+            if (!Enum.IsDefined(mode))
+                throw new ArgumentOutOfRangeException(nameof(config), "OfficeTimeTrackingMode must be Off, FirstToLast, or Accumulated.");
+            if (mode != OfficeTimeTrackingMode.Off && minimumHours is < 0.01m or > 24m)
+                throw new ArgumentOutOfRangeException(nameof(config), "MinimumOfficeHours must be between 0.01 and 24 hours.");
+            _officeDayPolicy = new OfficeDayPolicy(mode, minimumHours);
+
+            var pollInterval = config.GetValue("PollIntervalMs", 1800000);
+            _maximumPollGap = TimeSpan.FromMilliseconds(pollInterval + Math.Min(pollInterval * 0.1, 60000));
 
             var networkConfig = config.GetSection("Networks").Get<List<string>>() ?? [];
 
@@ -118,7 +132,7 @@ namespace OfficeAttendanceTracker.Core
         public int GetCurrentMonthAttendance()
         {
             var currentMonthRecords = _attendanceRecordStore.GetMonth(_dateTimeProvider.Today);
-            return currentMonthRecords.Count(r => r.IsOffice && !r.IsDayOff);
+            return currentMonthRecords.Count(_officeDayPolicy.CountsAsOfficeDay);
         }
 
         /// <inheritdoc />
@@ -139,7 +153,8 @@ namespace OfficeAttendanceTracker.Core
             {
                 Month = first,
                 Records = Array.AsReadOnly(records),
-                OfficeDays = records.Count(record => record.IsOffice && !record.IsDayOff),
+                OfficeDayPolicy = _officeDayPolicy,
+                OfficeDays = records.Count(_officeDayPolicy.CountsAsOfficeDay),
                 BusinessDays = businessDays,
                 RequiredOfficeDays = CalculateRequiredOfficeDays(businessDays),
                 UnrecordedBusinessDays = unrecorded,
@@ -221,6 +236,47 @@ namespace OfficeAttendanceTracker.Core
 
 
         public bool TakeAttendance()
+        {
+            lock (_pollLock)
+            {
+                return _officeDayPolicy.Mode == OfficeTimeTrackingMode.Off
+                    ? TakeUntimedAttendance()
+                    : TakeTimedAttendance();
+            }
+        }
+
+        private bool TakeTimedAttendance()
+        {
+            var previous = _previousDetection;
+            _previousDetection = null;
+            if (!CheckAttendance())
+            {
+                var today = _dateTimeProvider.Today;
+                if (_attendanceRecordStore.GetDate(today) is null)
+                    _attendanceRecordStore.Add(false, today);
+                _attendanceRecordStore.SaveChanges();
+                return false;
+            }
+
+            var now = _dateTimeProvider.Now;
+            var suspendedTime = _dateTimeProvider.SuspendedTime;
+            DateTimeOffset? creditedFrom = null;
+            if (previous is { } last && now.Date == last.DetectedAt.Date)
+            {
+                var gap = now - last.DetectedAt;
+                if (gap > TimeSpan.Zero && gap <= _maximumPollGap &&
+                    (suspendedTime - last.SuspendedTime).Duration() < TimeSpan.FromMilliseconds(100))
+                {
+                    creditedFrom = last.DetectedAt;
+                }
+            }
+
+            _attendanceRecordStore.RecordOfficeDetection(now, creditedFrom);
+            _previousDetection = (now, suspendedTime);
+            return true;
+        }
+
+        private bool TakeUntimedAttendance()
         {
             var attendance = _attendanceRecordStore.GetToday();
             if (attendance == null)

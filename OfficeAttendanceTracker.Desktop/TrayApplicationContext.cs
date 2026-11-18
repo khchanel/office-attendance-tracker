@@ -90,7 +90,7 @@ namespace OfficeAttendanceTracker.Desktop
 
         private void OnServiceRecreated(object? sender, IAttendanceService newService)
         {
-            UpdateAttendanceCount(showBalloonTip: true);
+            UpdateAttendanceCount(showBalloonTip: true, recordAttendance: false);
             _reportsForm?.RefreshReport();
         }
 

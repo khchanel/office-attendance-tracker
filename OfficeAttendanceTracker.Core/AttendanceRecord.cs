@@ -8,6 +8,15 @@ namespace OfficeAttendanceTracker.Core
         public required DateTime Date { get; set; }
         public required bool IsOffice { get; set; }
         public bool IsDayOff { get; set; }
+
+        /// <summary>Gets or sets the first tracked office detection for this date.</summary>
+        public DateTimeOffset? FirstOfficeDetectionAt { get; set; }
+
+        /// <summary>Gets or sets the most recent tracked office detection for this date.</summary>
+        public DateTimeOffset? LastOfficeDetectionAt { get; set; }
+
+        /// <summary>Gets or sets credited office seconds, or null when the visit was untracked.</summary>
+        public decimal? TrackedOfficeSeconds { get; set; }
     }
 
 }

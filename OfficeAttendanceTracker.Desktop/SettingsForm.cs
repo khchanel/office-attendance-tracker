@@ -18,6 +18,8 @@ namespace OfficeAttendanceTracker.Desktop
         private CheckBox _enableBackgroundWorkerCheckBox = null!;
         private CheckBox _startWithWindowsCheckBox = null!;
         private NumericUpDown _complianceThresholdNumeric = null!;
+        private ComboBox _officeTimeModeComboBox = null!;
+        private NumericUpDown _minimumOfficeHoursNumeric = null!;
         private TextBox _dataFilePathTextBox = null!;
         private TextBox _dataFileNameTextBox = null!;
         private Button _browseButton = null!;
@@ -37,7 +39,7 @@ namespace OfficeAttendanceTracker.Desktop
         private void InitializeComponents()
         {
             this.Text = "Office Attendance Tracker - Settings";
-            this.Size = new System.Drawing.Size(600, 500);
+            this.Size = new System.Drawing.Size(600, 550);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -57,7 +59,7 @@ namespace OfficeAttendanceTracker.Desktop
                 Dock = DockStyle.Fill,
                 Padding = new Padding(15),
                 ColumnCount = 2,
-                RowCount = 9,
+                RowCount = 10,
                 AutoSize = true
             };
 
@@ -178,6 +180,47 @@ namespace OfficeAttendanceTracker.Desktop
             mainPanel.Controls.Add(complianceLabel, 0, 4);
             mainPanel.Controls.Add(_complianceThresholdNumeric, 1, 4);
 
+            var officeTimeModeLabel = new Label
+            {
+                Text = "Office time tracking:",
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+                Dock = DockStyle.Fill
+            };
+            _officeTimeModeComboBox = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Dock = DockStyle.Left,
+                Width = 250
+            };
+            _officeTimeModeComboBox.Items.AddRange(["Off", "First to last detection", "Accumulated office time"]);
+            toolTip.SetToolTip(_officeTimeModeComboBox,
+                "First to last includes gaps between visits. Accumulated time credits consecutive office polls.");
+            mainPanel.Controls.Add(officeTimeModeLabel, 0, 5);
+            mainPanel.Controls.Add(_officeTimeModeComboBox, 1, 5);
+
+            var minimumOfficeHoursLabel = new Label
+            {
+                Text = "Minimum office hours:",
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+                Dock = DockStyle.Fill
+            };
+            _minimumOfficeHoursNumeric = new NumericUpDown
+            {
+                Minimum = 0.01m,
+                Maximum = 24,
+                Increment = 0.25m,
+                DecimalPlaces = 2,
+                Dock = DockStyle.Left,
+                Width = 100
+            };
+            _officeTimeModeComboBox.SelectedIndexChanged += (_, _) =>
+                minimumOfficeHoursLabel.Visible = _minimumOfficeHoursNumeric.Visible =
+                    _officeTimeModeComboBox.SelectedIndex > 0;
+            toolTip.SetToolTip(_minimumOfficeHoursNumeric,
+                "Minimum hours for an office day. The current rule also applies to past tracked days.");
+            mainPanel.Controls.Add(minimumOfficeHoursLabel, 0, 6);
+            mainPanel.Controls.Add(_minimumOfficeHoursNumeric, 1, 6);
+
             // Data File Path
             var dataFilePathLabel = new Label
             {
@@ -209,8 +252,8 @@ namespace OfficeAttendanceTracker.Desktop
             _browseButton.Click += BrowseButton_Click;
             pathPanel.Controls.Add(_dataFilePathTextBox);
             pathPanel.Controls.Add(_browseButton);
-            mainPanel.Controls.Add(dataFilePathLabel, 0, 5);
-            mainPanel.Controls.Add(pathPanel, 1, 5);
+            mainPanel.Controls.Add(dataFilePathLabel, 0, 7);
+            mainPanel.Controls.Add(pathPanel, 1, 7);
 
             // Data File Name
             var dataFileNameLabel = new Label
@@ -225,8 +268,8 @@ namespace OfficeAttendanceTracker.Desktop
                 Width = 200
             };
             toolTip.SetToolTip(_dataFileNameTextBox, "Name of the attendance file.\nSupported formats: .csv or .json\n\nApplied immediately after save.");
-            mainPanel.Controls.Add(dataFileNameLabel, 0, 6);
-            mainPanel.Controls.Add(_dataFileNameTextBox, 1, 6);
+            mainPanel.Controls.Add(dataFileNameLabel, 0, 8);
+            mainPanel.Controls.Add(_dataFileNameTextBox, 1, 8);
 
             // Buttons
             var buttonPanel = new Panel
@@ -282,7 +325,7 @@ namespace OfficeAttendanceTracker.Desktop
             buttonPanel.Controls.Add(rightButtonPanel);
 
             mainPanel.SetColumnSpan(buttonPanel, 2);
-            mainPanel.Controls.Add(buttonPanel, 0, 8);
+            mainPanel.Controls.Add(buttonPanel, 0, 9);
 
             this.Controls.Add(mainPanel);
             this.AcceptButton = _saveButton;
@@ -296,6 +339,9 @@ namespace OfficeAttendanceTracker.Desktop
             _enableBackgroundWorkerCheckBox.Checked = _workingSettings.EnableBackgroundWorker;
             _startWithWindowsCheckBox.Checked = _workingSettings.StartWithWindows;
             _complianceThresholdNumeric.Value = (decimal)(_workingSettings.ComplianceThreshold * 100);
+            _officeTimeModeComboBox.SelectedIndex = Enum.IsDefined(_workingSettings.OfficeTimeTrackingMode)
+                ? (int)_workingSettings.OfficeTimeTrackingMode : 0;
+            _minimumOfficeHoursNumeric.Value = Math.Clamp(_workingSettings.MinimumOfficeHours, 0.01m, 24m);
             _dataFilePathTextBox.Text = _workingSettings.DataFilePath ?? string.Empty;
             _dataFileNameTextBox.Text = _workingSettings.DataFileName;
         }
@@ -372,6 +418,8 @@ namespace OfficeAttendanceTracker.Desktop
                 _workingSettings.EnableBackgroundWorker = _enableBackgroundWorkerCheckBox.Checked;
                 _workingSettings.StartWithWindows = _startWithWindowsCheckBox.Checked;
                 _workingSettings.ComplianceThreshold = (double)_complianceThresholdNumeric.Value / 100;
+                _workingSettings.OfficeTimeTrackingMode = (OfficeTimeTrackingMode)_officeTimeModeComboBox.SelectedIndex;
+                _workingSettings.MinimumOfficeHours = _minimumOfficeHoursNumeric.Value;
                 _workingSettings.DataFilePath = string.IsNullOrWhiteSpace(_dataFilePathTextBox.Text)
                     ? null
                     : _dataFilePathTextBox.Text;
@@ -415,6 +463,7 @@ namespace OfficeAttendanceTracker.Desktop
                 $"- Background Worker: {(defaults.EnableBackgroundWorker ? "Enabled" : "Disabled")}\n" +
                 $"- Start with Windows: {(defaults.StartWithWindows ? "Enabled" : "Disabled")}\n" +
                 $"- Compliance Threshold: {defaults.ComplianceThreshold * 100}%\n" +
+                $"- Office Time Tracking: {defaults.OfficeTimeTrackingMode}\n" +
                 $"- Data File Name: {defaults.DataFileName}\n" +
                 $"- Data File Path: {(string.IsNullOrEmpty(defaults.DataFilePath) ? "(default)" : defaults.DataFilePath)}";
 

@@ -102,6 +102,8 @@ namespace OfficeAttendanceTracker.Desktop
                 ["Networks:0"] = settings.Networks.Count > 0 ? settings.Networks[0] : null,
                 ["PollIntervalMs"] = settings.PollIntervalMs.ToString(),
                 ["ComplianceThreshold"] = settings.ComplianceThreshold.ToString(),
+                ["OfficeTimeTrackingMode"] = settings.OfficeTimeTrackingMode.ToString(),
+                ["MinimumOfficeHours"] = settings.MinimumOfficeHours.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 ["DataFilePath"] = settings.DataFilePath,
                 ["DataFileName"] = settings.DataFileName
             };

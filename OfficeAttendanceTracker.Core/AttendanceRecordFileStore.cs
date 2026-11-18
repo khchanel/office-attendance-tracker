@@ -99,12 +99,51 @@ namespace OfficeAttendanceTracker.Core
         }
 
         /// <inheritdoc />
+        public void RecordOfficeDetection(DateTimeOffset detectedAt, DateTimeOffset? previousDetection)
+        {
+            lock (_lock)
+            {
+                var record = GetDate(detectedAt.Date);
+                var previous = record is null ? null : record with { };
+                var wasDirty = _isDirty;
+                record ??= Add(false, detectedAt.Date);
+                var creditedSeconds = previousDetection is { } start && start == record.LastOfficeDetectionAt
+                    ? (detectedAt - start).Ticks / (decimal)TimeSpan.TicksPerSecond : 0m;
+                record.IsOffice = true;
+                record.FirstOfficeDetectionAt ??= detectedAt;
+                record.LastOfficeDetectionAt = detectedAt;
+                record.TrackedOfficeSeconds = (record.TrackedOfficeSeconds ?? 0m) + creditedSeconds;
+                _isDirty = true;
+
+                try
+                {
+                    SaveChanges();
+                }
+                catch
+                {
+                    if (previous is null)
+                        Records.Remove(record);
+                    else
+                        Records[Records.IndexOf(record)] = previous;
+                    _isDirty = wasDirty;
+                    throw;
+                }
+            }
+        }
+
+        /// <inheritdoc />
         public void SetDayOff(bool isDayOff, DateTime date)
             => SetRecordFlag(isDayOff, date, static record => record.IsDayOff, static (record, value) => record.IsDayOff = value);
 
         /// <inheritdoc />
         public void SetOfficeAttendance(bool isOffice, DateTime date)
-            => SetRecordFlag(isOffice, date, static record => record.IsOffice, static (record, value) => record.IsOffice = value);
+            => SetRecordFlag(isOffice, date, static record => record.IsOffice, static (record, value) =>
+            {
+                record.IsOffice = value;
+                record.FirstOfficeDetectionAt = null;
+                record.LastOfficeDetectionAt = null;
+                record.TrackedOfficeSeconds = null;
+            });
 
         /// <inheritdoc />
         public void ClearDay(DateTime date)
@@ -142,8 +181,7 @@ namespace OfficeAttendanceTracker.Core
                     return;
 
                 var wasDirty = _isDirty;
-                var previousValue = record != null && getFlag(record);
-                var isNew = record == null;
+                var previous = record is null ? null : record with { };
                 record ??= Add(false, date.Date);
                 setFlag(record, value);
                 _isDirty = true;
@@ -155,10 +193,10 @@ namespace OfficeAttendanceTracker.Core
                 catch
                 {
                     // Do not let the auto-save timer retry a failed user edit later.
-                    if (isNew)
+                    if (previous is null)
                         Records.Remove(record);
                     else
-                        setFlag(record, previousValue);
+                        Records[Records.IndexOf(record)] = previous;
                     _isDirty = wasDirty;
                     throw;
                 }
