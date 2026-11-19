@@ -43,6 +43,9 @@ public sealed class ReportsForm : Form
     /// <summary>Occurs after an attendance or day-off change has been saved.</summary>
     public event EventHandler? RecordsChanged;
 
+    /// <summary>Occurs when the user requests the settings dialog.</summary>
+    internal event EventHandler? SettingsRequested;
+
     /// <summary>Creates a report using the active service and application clock.</summary>
     public ReportsForm(IAttendanceServiceProvider serviceProvider, IDateTimeProvider clock)
     {
@@ -141,7 +144,16 @@ public sealed class ReportsForm : Form
         recordsGroup.Controls.Add(recordsLayout);
         body.Controls.Add(recordsGroup, 1, 0);
         layout.Controls.Add(body, 0, 5);
-        layout.Controls.Add(_detail, 0, 6);
+        var footer = new TableLayoutPanel
+        {
+            AutoSize = true, Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
+            Margin = Padding.Empty
+        };
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        footer.Controls.Add(MakeButton("Settings...", () => SettingsRequested?.Invoke(this, EventArgs.Empty)), 0, 0);
+        footer.Controls.Add(_detail, 1, 0);
+        layout.Controls.Add(footer, 0, 6);
         Controls.Add(layout);
 
         _month.ValueChanged += (_, _) => RefreshReport();

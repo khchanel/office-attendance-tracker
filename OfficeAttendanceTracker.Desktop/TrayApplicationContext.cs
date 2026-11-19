@@ -239,7 +239,9 @@ namespace OfficeAttendanceTracker.Desktop
             UpdateAttendanceCount(showBalloonTip: true);
         }
 
-        private void OnSettings(object? sender, EventArgs e)
+        private void OnSettings(object? sender, EventArgs e) => ShowSettings();
+
+        private void ShowSettings(Form? owner = null)
         {
             // If settings form is already open, bring it to front
             if (_settingsForm != null && !_settingsForm.IsDisposed)
@@ -251,12 +253,18 @@ namespace OfficeAttendanceTracker.Desktop
 
             // Create new settings form
             var networkDetectionService = _host.Services.GetRequiredService<INetworkDetectionService>();
-            _settingsForm = new SettingsForm(_settingsManager, networkDetectionService);
-            
-            // Clear reference when form is closed
-            _settingsForm.FormClosed += (s, args) => _settingsForm = null;
-            
-            _settingsForm.ShowDialog();
+            using var settingsForm = new SettingsForm(_settingsManager, networkDetectionService);
+            _settingsForm = settingsForm;
+            try
+            {
+                if (owner != null)
+                    settingsForm.StartPosition = FormStartPosition.CenterParent;
+                settingsForm.ShowDialog(owner);
+            }
+            finally
+            {
+                _settingsForm = null;
+            }
         }
 
         private void OnReports(object? sender, EventArgs e)
@@ -269,10 +277,12 @@ namespace OfficeAttendanceTracker.Desktop
                 return;
             }
 
-            _reportsForm = new ReportsForm(_serviceProvider, _host.Services.GetRequiredService<IDateTimeProvider>());
-            _reportsForm.RecordsChanged += (_, _) => UpdateAttendanceCount(recordAttendance: false);
-            _reportsForm.FormClosed += (_, _) => _reportsForm = null;
-            _reportsForm.Show();
+            var reportsForm = new ReportsForm(_serviceProvider, _host.Services.GetRequiredService<IDateTimeProvider>());
+            _reportsForm = reportsForm;
+            reportsForm.SettingsRequested += (_, _) => ShowSettings(reportsForm);
+            reportsForm.RecordsChanged += (_, _) => UpdateAttendanceCount(recordAttendance: false);
+            reportsForm.FormClosed += (_, _) => _reportsForm = null;
+            reportsForm.Show();
         }
 
         private void OnSettingsChanged(object? sender, AppSettings settings)
