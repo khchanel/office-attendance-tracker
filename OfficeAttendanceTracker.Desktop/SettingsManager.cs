@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text.Json;
 using Microsoft.Win32;
 using OfficeAttendanceTracker.Core;

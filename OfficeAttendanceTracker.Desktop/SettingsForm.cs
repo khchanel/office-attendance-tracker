@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+using System.IO;
+using System.Diagnostics;
 using System.Windows.Forms;
 using OfficeAttendanceTracker.Core;
 

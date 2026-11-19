@@ -1,22 +1,23 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using System.Windows.Threading;
 using OfficeAttendanceTracker.Core;
 
 namespace OfficeAttendanceTracker.Desktop
 {
-    public class TrayApplicationContext : ApplicationContext
+    internal sealed class TrayApplicationContext : IDisposable
     {
         internal const string AppName = "Office Attendance Tracker";
 
         private readonly NotifyIcon _trayIcon;
-        private readonly IHost _host;
+        private readonly IServiceProvider _services;
         private readonly IAttendanceServiceProvider _serviceProvider;
         private readonly SettingsManager _settingsManager;
-        private readonly System.Windows.Forms.Timer _updateTimer;
-        private readonly System.Windows.Forms.Timer _trayClickTimer;
+        private readonly DispatcherTimer _updateTimer;
+        private readonly DispatcherTimer _trayClickTimer;
+        private Icon? _attendanceIcon;
         private int _lastCount = -1;
         private ComplianceStatus? _lastComplianceStatus;
         private SettingsForm? _settingsForm;
@@ -28,17 +29,17 @@ namespace OfficeAttendanceTracker.Desktop
         private IAttendanceService AttendanceService => _serviceProvider.Current;
 
 
-        public TrayApplicationContext(IHost host, IAttendanceServiceProvider serviceProvider, SettingsManager settingsManager)
+        internal TrayApplicationContext(IServiceProvider services, SettingsManager settingsManager)
         {
-            _host = host;
-            _serviceProvider = serviceProvider;
+            _services = services;
+            _serviceProvider = services.GetRequiredService<IAttendanceServiceProvider>();
             _settingsManager = settingsManager;
 
             _trayIcon = new NotifyIcon()
             {
                 Icon = SystemIcons.Application,
                 ContextMenuStrip = new ContextMenuStrip(),
-                Visible = true,
+                Visible = false,
                 Text = AppName
             };
 
@@ -46,8 +47,8 @@ namespace OfficeAttendanceTracker.Desktop
             _trayIcon.ContextMenuStrip.Items.Add("Reports...", null, OnReports);
             _trayIcon.ContextMenuStrip.Items.Add("Settings...", null, OnSettings);
             _trayIcon.ContextMenuStrip.Items.Add(new ToolStripSeparator());
-            _trayIcon.ContextMenuStrip.Items.Add("Exit", null, OnExit);
-            _trayClickTimer = new System.Windows.Forms.Timer { Interval = SystemInformation.DoubleClickTime };
+            _trayIcon.ContextMenuStrip.Items.Add("Exit", null, (_, _) => System.Windows.Application.Current.Shutdown());
+            _trayClickTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(SystemInformation.DoubleClickTime) };
             _trayClickTimer.Tick += (sender, args) =>
             {
                 _trayClickTimer.Stop();
@@ -57,7 +58,10 @@ namespace OfficeAttendanceTracker.Desktop
             {
                 // Give Windows time to recognize a double-click before refreshing.
                 if (args.Button == MouseButtons.Left)
+                    {
+                    _trayClickTimer.Stop();
                     _trayClickTimer.Start();
+                }
             };
             _trayIcon.MouseDoubleClick += (sender, args) =>
             {
@@ -67,18 +71,19 @@ namespace OfficeAttendanceTracker.Desktop
                     OnReports(sender, args);
                 }
             };
-            _trayIcon.ShowBalloonTip(2000, AppName, "Application started and running in the system tray.", ToolTipIcon.Info);
-
-            // Timer for periodic attendance check and UI update
-            var pollIntervalMs = _settingsManager.CurrentSettings.PollIntervalMs;
-            _updateTimer = new System.Windows.Forms.Timer();
-            _updateTimer.Interval = pollIntervalMs;
-            _updateTimer.Tick += (s, e) => UpdateAttendanceCount();
-            
-            // Subscribe to service recreation and settings changes
+            _updateTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(_settingsManager.CurrentSettings.PollIntervalMs)
+            };
+            _updateTimer.Tick += (_, _) => UpdateAttendanceCount();
             _serviceProvider.ServiceRecreated += OnServiceRecreated;
             _settingsManager.SettingsChanged += OnSettingsChanged;
-            
+        }
+
+        internal void Start()
+        {
+            _trayIcon.Visible = true;
+            _trayIcon.ShowBalloonTip(2000, AppName, "Application started and running in the system tray.", ToolTipIcon.Info);
             // Start timer if background worker is enabled
             if (_settingsManager.CurrentSettings.EnableBackgroundWorker)
             {
@@ -120,7 +125,7 @@ namespace OfficeAttendanceTracker.Desktop
             };
         }
 
-        private Icon CreateIconWithNumber(int attendance)
+        private static Icon CreateIconWithNumber(int attendance, ComplianceStatus status)
         {
             // bitmap size and font scale
             // 32x32 scale 1.0x | 1 digit font 24 | 2 digit font 20
@@ -134,7 +139,6 @@ namespace OfficeAttendanceTracker.Desktop
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
 
-                var status = AttendanceService.GetComplianceStatus();
                 var backgroundColor = ComplianceColors.For(status).Accent;
 
                 using (SolidBrush bgBrush = new SolidBrush(backgroundColor))
@@ -157,7 +161,7 @@ namespace OfficeAttendanceTracker.Desktop
                 using (SolidBrush textBrush = new SolidBrush(Color.White))
                 {
                     // Center the text
-                    StringFormat sf = new StringFormat
+                    using var sf = new StringFormat
                     {
                         Alignment = StringAlignment.Center,
                         LineAlignment = StringAlignment.Center
@@ -168,10 +172,21 @@ namespace OfficeAttendanceTracker.Desktop
 
                 // Convert bitmap to icon
                 IntPtr hicon = bitmap.GetHicon();
-                Icon icon = Icon.FromHandle(hicon);
-                return icon;
+                try
+                {
+                    using var icon = Icon.FromHandle(hicon);
+                    return (Icon)icon.Clone();
+                }
+                finally
+                {
+                    DestroyIcon(hicon);
+                }
             }
         }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+        private static extern bool DestroyIcon(IntPtr handle);
 
         private void UpdateAttendanceCount(bool showBalloonTip = false, bool recordAttendance = true)
         {
@@ -201,22 +216,18 @@ namespace OfficeAttendanceTracker.Desktop
 
                 var count = service.GetCurrentMonthAttendance();
                 var requiredDays = service.CalculateRequiredOfficeDays(service.GetBusinessDaysInCurrentMonth());
-                var targetPercentage = _settingsManager.CurrentSettings.ComplianceThreshold;
-                var attendancePercentage = 1.0 * count / service.GetBusinessDaysInCurrentMonth();
+                var businessDays = service.GetBusinessDaysInCurrentMonth();
+                var attendancePercentage = businessDays == 0 ? "N/A" : (1.0 * count / businessDays).ToString("P2");
                 var currentMonth = DateTime.Today.ToString("MMMM yyyy");
 
                 // Update icon with the count number
                 var complianceStatus = service.GetComplianceStatus();
                 if (count != _lastCount || complianceStatus != _lastComplianceStatus)
                 {
-                    var oldIcon = _trayIcon.Icon;
-                    _trayIcon.Icon = CreateIconWithNumber(count);
-
-                    // Dispose old icon to free resources (but not if it's the system icon)
-                    if (oldIcon != null && oldIcon != SystemIcons.Application)
-                    {
-                        oldIcon.Dispose();
-                    }
+                    var icon = CreateIconWithNumber(count, complianceStatus);
+                    _trayIcon.Icon = icon;
+                    _attendanceIcon?.Dispose();
+                    _attendanceIcon = icon;
 
                     _lastCount = count;
                     _lastComplianceStatus = complianceStatus;
@@ -225,7 +236,7 @@ namespace OfficeAttendanceTracker.Desktop
                 // Build status messages
                 var complianceText = GetComplianceStatusText(complianceStatus);
                 var officeStatusText = isInOffice ? "[YES] Currently in office" : "[NO] Not in office";
-                var attendanceText = $"Office days ({currentMonth}): {count}/{requiredDays} ({attendancePercentage:P2})";
+                var attendanceText = $"Office days ({currentMonth}): {count}/{requiredDays} ({attendancePercentage})";
                 
                 // Show warning if no networks configured
                 string message;
@@ -238,7 +249,7 @@ namespace OfficeAttendanceTracker.Desktop
                     message = $"{attendanceText}\n{officeStatusText}\n{complianceText}";
                 }
                 
-                _trayIcon.Text = message;
+                _trayIcon.Text = message.Length <= 127 ? message : message[..127];
                 
                 if (showBalloonTip)
                 {
@@ -247,7 +258,9 @@ namespace OfficeAttendanceTracker.Desktop
             }
             catch (Exception ex)
             {
-                _trayIcon.Text = $"Error: {ex.Message}";
+                _trayIcon.Text = "Attendance check failed";
+                Console.Error.WriteLine(ex);
+                _lastCount = -1;
                 _trayIcon.Icon = SystemIcons.Error;
             }
         }
@@ -270,7 +283,7 @@ namespace OfficeAttendanceTracker.Desktop
             }
 
             // Create new settings form
-            var networkDetectionService = _host.Services.GetRequiredService<INetworkDetectionService>();
+            var networkDetectionService = _services.GetRequiredService<INetworkDetectionService>();
             using var settingsForm = new SettingsForm(_settingsManager, networkDetectionService);
             _settingsForm = settingsForm;
             try
@@ -295,7 +308,7 @@ namespace OfficeAttendanceTracker.Desktop
                 return;
             }
 
-            var reportsForm = new ReportsForm(_serviceProvider, _host.Services.GetRequiredService<IDateTimeProvider>());
+            var reportsForm = new ReportsForm(_serviceProvider, _services.GetRequiredService<IDateTimeProvider>());
             _reportsForm = reportsForm;
             reportsForm.SettingsRequested += (_, _) => ShowSettings(reportsForm);
             reportsForm.RecordsChanged += (_, _) => UpdateAttendanceCount(recordAttendance: false);
@@ -306,11 +319,11 @@ namespace OfficeAttendanceTracker.Desktop
         private void OnSettingsChanged(object? sender, AppSettings settings)
         {
             // Update timer interval if changed
-            if (_updateTimer.Interval != settings.PollIntervalMs)
+            if (_updateTimer.Interval.TotalMilliseconds != settings.PollIntervalMs)
             {
-                bool wasRunning = _updateTimer.Enabled;
+                bool wasRunning = _updateTimer.IsEnabled;
                 _updateTimer.Stop();
-                _updateTimer.Interval = settings.PollIntervalMs;
+                _updateTimer.Interval = TimeSpan.FromMilliseconds(settings.PollIntervalMs);
                 if (wasRunning)
                 {
                     _updateTimer.Start();
@@ -318,40 +331,27 @@ namespace OfficeAttendanceTracker.Desktop
             }
             
             // Enable/disable automatic tracking immediately
-            if (settings.EnableBackgroundWorker && !_updateTimer.Enabled)
+            if (settings.EnableBackgroundWorker && !_updateTimer.IsEnabled)
             {
                 _updateTimer.Start();
             }
-            else if (!settings.EnableBackgroundWorker && _updateTimer.Enabled)
+            else if (!settings.EnableBackgroundWorker && _updateTimer.IsEnabled)
             {
                 _updateTimer.Stop();
             }
         }
 
-        private void OnExit(object? sender, EventArgs e)
+        public void Dispose()
         {
             _reportsForm?.Close();
-            _trayIcon.Visible = false;
             _trayClickTimer.Stop();
-            _trayClickTimer.Dispose();
             _updateTimer.Stop();
-            _updateTimer.Dispose();
-
-            // Unsubscribe from events
             _serviceProvider.ServiceRecreated -= OnServiceRecreated;
             _settingsManager.SettingsChanged -= OnSettingsChanged;
-
-            // Dispose icon before disposing the NotifyIcon
-            if (_trayIcon.Icon != null && _trayIcon.Icon != SystemIcons.Application)
-            {
-                _trayIcon.Icon.Dispose();
-            }
-
+            _trayIcon.Visible = false;
+            _trayIcon.ContextMenuStrip?.Dispose();
             _trayIcon.Dispose();
-
-            // Stop the host
-            _host.StopAsync().Wait();
-            Application.Exit();
+            _attendanceIcon?.Dispose();
         }
     }
 }
