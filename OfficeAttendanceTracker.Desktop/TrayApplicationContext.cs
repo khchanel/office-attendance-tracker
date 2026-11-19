@@ -16,6 +16,7 @@ namespace OfficeAttendanceTracker.Desktop
         private readonly IAttendanceServiceProvider _serviceProvider;
         private readonly SettingsManager _settingsManager;
         private readonly System.Windows.Forms.Timer _updateTimer;
+        private readonly System.Windows.Forms.Timer _trayClickTimer;
         private int _lastCount = -1;
         private ComplianceStatus? _lastComplianceStatus;
         private SettingsForm? _settingsForm;
@@ -46,11 +47,24 @@ namespace OfficeAttendanceTracker.Desktop
             _trayIcon.ContextMenuStrip.Items.Add("Settings...", null, OnSettings);
             _trayIcon.ContextMenuStrip.Items.Add(new ToolStripSeparator());
             _trayIcon.ContextMenuStrip.Items.Add("Exit", null, OnExit);
-            _trayIcon.MouseClick += (s, e) =>
+            _trayClickTimer = new System.Windows.Forms.Timer { Interval = SystemInformation.DoubleClickTime };
+            _trayClickTimer.Tick += (sender, args) =>
             {
-                if (e.Button == MouseButtons.Left)
+                _trayClickTimer.Stop();
+                OnRefresh(sender, args);
+            };
+            _trayIcon.MouseClick += (_, args) =>
+            {
+                // Give Windows time to recognize a double-click before refreshing.
+                if (args.Button == MouseButtons.Left)
+                    _trayClickTimer.Start();
+            };
+            _trayIcon.MouseDoubleClick += (sender, args) =>
+            {
+                if (args.Button == MouseButtons.Left)
                 {
-                    OnRefresh(s, e);
+                    _trayClickTimer.Stop();
+                    OnReports(sender, args);
                 }
             };
             _trayIcon.ShowBalloonTip(2000, AppName, "Application started and running in the system tray.", ToolTipIcon.Info);
@@ -314,6 +328,8 @@ namespace OfficeAttendanceTracker.Desktop
         {
             _reportsForm?.Close();
             _trayIcon.Visible = false;
+            _trayClickTimer.Stop();
+            _trayClickTimer.Dispose();
             _updateTimer.Stop();
             _updateTimer.Dispose();
 
