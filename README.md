@@ -1,4 +1,4 @@
-﻿# Office Attendance Tracker
+# Office Attendance Tracker
 
 [![Github Release](https://img.shields.io/github/v/release/khchanel/office-attendance-tracker?style=flat)](https://github.com/khchanel/office-attendance-tracker/releases)
 [![build](https://github.com/khchanel/office-attendance-tracker/actions/workflows/dotnet.yml/badge.svg)](https://github.com/khchanel/office-attendance-tracker/actions/workflows/dotnet.yml)
@@ -29,7 +29,8 @@ Review monthly target progress, explore the attendance calendar, and filter dail
 
 ![Monthly attendance report with target met, interactive calendar, and daily records](./docs/screenshots/Screenshot-MonthlyReport.png)
 
-**Settings:**  
+**Settings tab**
+
 ![Settings UI](./docs/screenshots/Screenshot-SettingsUI.png)
 
 
@@ -51,17 +52,17 @@ dotnet publish OfficeAttendanceTracker.Service -c Release -o ./publish/service
 ## Quick Start
 
 ### Prerequisites
-- .NET 8 Runtime
+- .NET 8 Desktop Runtime for the Windows desktop app or .NET 8 Runtime for Service mode
 - Windows OS
 - Unix-like OS (Service mode only)
 
 ### Desktop App (Recommended)
 
 1. Download and run `OfficeAttendanceTracker.Desktop.exe`
-2. Configure office networks via Settings dialog (right-click tray icon)
-3. Click "Detect Current" to auto-detect your network, or enter manually in CIDR format
+2. Right-click the tray icon and choose **Settings...** to open the Settings tab
+3. Click **Detect current** or enter your office networks in CIDR format, then click **Save**
 
-Right-click the tray icon and choose **Reports...** to review monthly attendance.
+Double-click the tray icon or choose **Reports...** to open the Report tab in the same window. Closing the window keeps the tracker in the system tray. Choose **Exit** from the tray menu to quit.
 
 
 ### Windows Service
