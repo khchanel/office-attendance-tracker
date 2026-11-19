@@ -6,10 +6,6 @@
         <Style TargetType="TextBox">
             <Setter Property="Padding" Value="5,3" />
         </Style>
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="10,4" />
-            <Setter Property="MinHeight" Value="28" />
-        </Style>
     </UserControl.Resources>
     <DockPanel Margin="20,14,20,16" MaxWidth="740">
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">

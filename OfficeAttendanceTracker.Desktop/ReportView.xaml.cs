@@ -1,12 +1,9 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using OfficeAttendanceTracker.Core;
-using Brush = System.Windows.Media.Brush;
-using ScrollViewer = System.Windows.Controls.ScrollViewer;
-using Button = System.Windows.Controls.Button;
-using UserControl = System.Windows.Controls.UserControl;
 
 namespace OfficeAttendanceTracker.Desktop;
 
@@ -41,7 +38,6 @@ public partial class ReportView : UserControl
         InitializeComponent();
         MonthPicker.DisplayDateStart = FirstMonth;
         MonthPicker.DisplayDateEnd = LastMonth.AddMonths(1).AddDays(-1);
-        MonthPicker.DateValidationError += (_, _) => ShowError("Enter a valid date to view its month.");
         SetMonth(clock.Today, clock.Today.Date);
     }
 
@@ -51,27 +47,48 @@ public partial class ReportView : UserControl
 
     private void ThisMonth(object sender, RoutedEventArgs e) => SetMonth(_clock.Today, _clock.Today.Date);
 
-    private void PickMonth(object sender, SelectionChangedEventArgs e)
+    private void OpenMonthPicker(object sender, RoutedEventArgs e)
     {
-        if (!_updating && MonthPicker.SelectedDate is { } date)
-            SetMonth(date);
+        MonthPicker.DisplayDate = _month;
+        MonthPicker.DisplayMode = CalendarMode.Year;
+        MonthPopup.IsOpen = true;
     }
+
+    private void MonthPickerOpened(object sender, EventArgs e) => MonthPicker.Focus();
+
+    private void PickMonth(object sender, CalendarModeChangedEventArgs e)
+    {
+        if (MonthPopup.IsOpen && e.NewMode == CalendarMode.Month)
+        {
+            var date = MonthPicker.DisplayDate;
+            CloseMonthPicker();
+            SetMonth(date);
+        }
+    }
+
+    private void MonthPickerKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            CloseMonthPicker();
+            e.Handled = true;
+        }
+    }
+
+    private void CloseMonthPicker()
+    {
+        MonthPopup.IsOpen = false;
+        MonthButton.Focus();
+    }
+
 
     private void SetMonth(DateTime date, DateTime? selected = null)
     {
         _month = new DateTime(date.Year, date.Month, 1);
-        _updating = true;
-        try
-        {
-            MonthHeading.Text = _month.ToString("MMMM yyyy");
-            PreviousButton.IsEnabled = _month > FirstMonth;
-            NextButton.IsEnabled = _month < LastMonth;
-            MonthPicker.SelectedDate = _month;
-        }
-        finally
-        {
-            _updating = false;
-        }
+        MonthHeading.Text = _month.ToString("MMMM yyyy");
+        System.Windows.Automation.AutomationProperties.SetName(MonthButton, MonthHeading.Text);
+        PreviousButton.IsEnabled = _month > FirstMonth;
+        NextButton.IsEnabled = _month < LastMonth;
 
         RefreshReport();
         if (selected is { } day)
@@ -187,7 +204,7 @@ public partial class ReportView : UserControl
             "Day off" => ("Day off", OffColor),
             "Weekend" => ("", InactiveColor),
             "Upcoming" => ("Future", InactiveColor),
-            _ => ("No data", System.Windows.Media.Brushes.White)
+            _ => ("No data", Brushes.White)
         };
         var hours = record is not null && report.GetOfficeHours(record) is { } value
             ? OfficeTimeFormatter.Format(value) : null;
@@ -277,7 +294,7 @@ public partial class ReportView : UserControl
         OfficeButton.Content = record?.IsOffice == true ? "Remove office" : "Set in office";
         SelectedDetail.Text = date is { } dayDate
             ? $"{dayDate:ddd, dd MMM yyyy} | {selected!.Status}{(dayDate == _clock.Today.Date ? " | Today" : "")}"
-            : _report is null ? "" : "No matching days";
+            : _report is null ? "" : Records.Items.Count == 0 ? "No matching days" : "Select a day to edit its record.";
     }
 
     private void ToggleDayOff(object sender, RoutedEventArgs e) =>

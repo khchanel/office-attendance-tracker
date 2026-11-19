@@ -3,10 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="#F6F8FB" Foreground="#1E2F48" FontFamily="Segoe UI" FontSize="13">
     <UserControl.Resources>
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="10,4" />
-            <Setter Property="MinHeight" Value="28" />
-        </Style>
         <Style x:Key="Metric" TargetType="TextBlock">
             <Setter Property="FontSize" Value="26" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -54,12 +50,23 @@
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="PreviousButton" Content="Previous" Click="PreviousMonth" Margin="0,0,8,0" />
-                <TextBlock x:Name="MonthHeading" FontSize="16" FontWeight="SemiBold" Width="145" VerticalAlignment="Center" TextAlignment="Center" />
+                <Grid>
+                    <Button x:Name="MonthButton" Click="OpenMonthPicker" MinWidth="174"
+                            AutomationProperties.HelpText="Choose the month to display.">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="MonthHeading" FontSize="15" FontWeight="SemiBold" />
+                            <Path Data="M 0 0 L 7 0 L 3.5 4 Z" Fill="#485466" Margin="8,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Popup x:Name="MonthPopup" PlacementTarget="{Binding ElementName=MonthButton}"
+                           Placement="Bottom" StaysOpen="False" Opened="MonthPickerOpened">
+                        <Calendar x:Name="MonthPicker" DisplayModeChanged="PickMonth" PreviewKeyDown="MonthPickerKeyDown"
+                                  AutomationProperties.Name="Report month" />
+                    </Popup>
+                </Grid>
                 <Button x:Name="NextButton" Content="Next" Click="NextMonth" Margin="8,0" />
                 <Button Content="This month" Click="ThisMonth" Margin="0,0,8,0" />
                 <Button Content="Refresh" Click="Refresh" Margin="0,0,8,0" />
-                <DatePicker x:Name="MonthPicker" Width="122" SelectedDateChanged="PickMonth"
-                            AutomationProperties.Name="Jump to month" ToolTip="Choose a date to view its month" />
             </StackPanel>
         </DockPanel>
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
@@ -154,6 +161,17 @@
                                 <Setter Property="Background" Value="{Binding Background}" />
                             </Style>
                         </DataGrid.RowStyle>
+                        <DataGrid.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#DDE7FC" />
+                                        <Setter Property="Foreground" Value="#1E2F48" />
+                                        <Setter Property="BorderBrush" Value="#AFBFE2" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.CellStyle>
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=dd MMM yyyy}" Width="1.25*" />
                             <DataGridTextColumn Header="Day" Binding="{Binding Date, StringFormat=ddd}" Width="0.65*" />

@@ -9,7 +9,7 @@ internal readonly record struct ComplianceColors(Color Accent, Color Background,
     private static readonly ComplianceColors Secured = new(
         Color.FromArgb(34, 139, 34), Color.FromArgb(213, 239, 225), Color.FromArgb(25, 102, 63));
     private static readonly ComplianceColors Compliant = new(
-        Color.FromArgb(0, 120, 215), Color.FromArgb(229, 237, 251), Color.FromArgb(0, 120, 215));
+        Color.FromArgb(0, 120, 215), Color.FromArgb(229, 237, 251), Color.FromArgb(0, 93, 168));
     private static readonly ComplianceColors Warning = new(
         Color.FromArgb(255, 140, 0), Color.FromArgb(255, 231, 203), Color.FromArgb(130, 72, 12));
     private static readonly ComplianceColors Critical = new(
