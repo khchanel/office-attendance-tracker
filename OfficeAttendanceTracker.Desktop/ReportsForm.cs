@@ -87,7 +87,7 @@ public sealed class ReportsForm : Form
         _month.Value = new DateTime(clock.Today.Year, clock.Today.Month, 1);
         readActions.Controls.Add(_month);
         readActions.Controls.Add(MakeButton("Next", () => MoveMonth(1)));
-        readActions.Controls.Add(MakeButton("This month", () => _month.Value = new DateTime(_clock.Today.Year, _clock.Today.Month, 1)));
+        readActions.Controls.Add(MakeButton("This month", GoToToday));
         readActions.Controls.Add(MakeButton("Refresh", RefreshReport));
         editActions.Controls.Add(_dayOffButton);
         _dayOffButton.Click += (_, _) => ToggleDayOff();
@@ -205,6 +205,14 @@ public sealed class ReportsForm : Form
         value.AccessibleName = title;
         card.Controls.Add(value, 0, 1);
         return card;
+    }
+
+    private void GoToToday()
+    {
+        var today = _clock.Today.Date;
+        _month.Value = new DateTime(today.Year, today.Month, 1);
+        if (_report != null)
+            SelectDate(today);
     }
 
     private void MoveMonth(int offset)
@@ -427,24 +435,34 @@ public sealed class ReportsForm : Form
             _records.Rows[index].Tag = date;
             _records.Rows[index].DefaultCellStyle.BackColor = StatusColor(status);
         }
-        if (selected.HasValue && _records.Rows.Cast<DataGridViewRow>().Any(row => Equals(row.Tag, selected.Value)))
-            SelectDate(selected.Value);
+        var rowToSelect = FindRecordRow(selected) ?? FindRecordRow(_clock.Today.Date);
+        if (rowToSelect != null)
+            SelectRecordRow(rowToSelect);
         ShowSelectedDay();
     }
 
+    private DataGridViewRow? FindRecordRow(DateTime? date) =>
+        date.HasValue ? _records.Rows.Cast<DataGridViewRow>().FirstOrDefault(row => Equals(row.Tag, date.Value)) : null;
+
     private void SelectDate(DateTime date)
     {
-        if (!_records.Rows.Cast<DataGridViewRow>().Any(row => Equals(row.Tag, date)))
-            _filter.SelectedIndex = 0;
-        foreach (DataGridViewRow row in _records.Rows)
+        var row = FindRecordRow(date);
+        if (row == null && _filter.SelectedIndex > 0)
         {
-            if (!Equals(row.Tag, date))
-                continue;
-            _records.CurrentCell = row.Cells[0];
-            _records.FirstDisplayedScrollingRowIndex = row.Index;
-            break;
+            _filter.SelectedIndex = 0;
+            row = FindRecordRow(date);
         }
-        ShowSelectedDay();
+
+        if (row != null)
+            SelectRecordRow(row);
+    }
+
+    private void SelectRecordRow(DataGridViewRow row)
+    {
+        _records.CurrentCell = row.Cells[0];
+        var visibleRows = Math.Max(1, _records.DisplayedRowCount(includePartialRow: false));
+        var lastPageStart = _records.Rows.Count - visibleRows;
+        _records.FirstDisplayedScrollingRowIndex = Math.Clamp(row.Index - visibleRows / 2, 0, lastPageStart);
     }
 
     private void ShowSelectedDay()
