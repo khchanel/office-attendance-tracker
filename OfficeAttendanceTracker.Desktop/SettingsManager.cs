@@ -113,7 +113,7 @@ namespace OfficeAttendanceTracker.Desktop
 
                 if (enabled)
                 {
-                    var executablePath = System.Windows.Forms.Application.ExecutablePath;
+                    var executablePath = Environment.ProcessPath ?? throw new InvalidOperationException("Executable path is unavailable.");
                     key.SetValue(applicationName, $"\"{executablePath}\"");
                 }
                 else

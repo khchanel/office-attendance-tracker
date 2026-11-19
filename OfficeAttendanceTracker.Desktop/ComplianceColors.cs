@@ -1,3 +1,4 @@
+using System.Drawing;
 using OfficeAttendanceTracker.Core;
 
 namespace OfficeAttendanceTracker.Desktop;

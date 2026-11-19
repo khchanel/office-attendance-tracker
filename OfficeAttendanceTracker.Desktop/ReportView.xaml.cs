@@ -33,7 +33,6 @@ public partial class ReportView : UserControl
     private bool _saving;
 
     internal event EventHandler? RecordsChanged;
-    internal event EventHandler? SettingsRequested;
 
     internal ReportView(IAttendanceServiceProvider serviceProvider, IDateTimeProvider clock)
     {
@@ -79,7 +78,6 @@ public partial class ReportView : UserControl
             SelectDate(day);
     }
 
-    private void OpenSettings(object sender, RoutedEventArgs e) => SettingsRequested?.Invoke(this, EventArgs.Empty);
 
     private void Refresh(object sender, RoutedEventArgs e) => RefreshReport();
 

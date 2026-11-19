@@ -20,7 +20,6 @@ namespace OfficeAttendanceTracker.Desktop
         private Icon? _attendanceIcon;
         private int _lastCount = -1;
         private ComplianceStatus? _lastComplianceStatus;
-        private SettingsForm? _settingsForm;
         private MainWindow? _mainWindow;
         private ReportView? _report;
 
@@ -45,8 +44,8 @@ namespace OfficeAttendanceTracker.Desktop
             };
 
             _trayIcon.ContextMenuStrip.Items.Add("Refresh", null, OnRefresh);
-            _trayIcon.ContextMenuStrip.Items.Add("Reports...", null, OnReports);
-            _trayIcon.ContextMenuStrip.Items.Add("Settings...", null, OnSettings);
+            _trayIcon.ContextMenuStrip.Items.Add("Reports...", null, (_, _) => ShowWindow(settings: false));
+            _trayIcon.ContextMenuStrip.Items.Add("Settings...", null, (_, _) => ShowWindow(settings: true));
             _trayIcon.ContextMenuStrip.Items.Add(new ToolStripSeparator());
             _trayIcon.ContextMenuStrip.Items.Add("Exit", null, (_, _) => System.Windows.Application.Current.Shutdown());
             _trayClickTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(SystemInformation.DoubleClickTime) };
@@ -69,7 +68,7 @@ namespace OfficeAttendanceTracker.Desktop
                 if (args.Button == MouseButtons.Left)
                 {
                     _trayClickTimer.Stop();
-                    OnReports(sender, args);
+                    ShowWindow(settings: false);
                 }
             };
             _updateTimer = new DispatcherTimer
@@ -93,19 +92,8 @@ namespace OfficeAttendanceTracker.Desktop
 
             UpdateAttendanceCount();
 
-            // Show settings on first run
             if (_settingsManager.IsFirstRun)
-            {
-                MessageBox.Show(
-                    "Welcome to Office Attendance Tracker!\n\n" +
-                    "Please configure your office network settings to begin tracking attendance.\n\n" +
-                    "You can access settings anytime by right-clicking the tray icon.",
-                    AppName,
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-                
-                OnSettings(null, EventArgs.Empty);
-            }
+                ShowWindow(settings: true);
         }
 
         private void OnServiceRecreated(object? sender, IAttendanceService newService)
@@ -271,60 +259,34 @@ namespace OfficeAttendanceTracker.Desktop
             UpdateAttendanceCount(showBalloonTip: true);
         }
 
-        private void OnSettings(object? sender, EventArgs e) => ShowSettings();
-
-        private void ShowSettings(IWin32Window? owner = null)
-        {
-            // If settings form is already open, bring it to front
-            if (_settingsForm != null && !_settingsForm.IsDisposed)
-            {
-                _settingsForm.Activate();
-                _settingsForm.BringToFront();
-                return;
-            }
-
-            // Create new settings form
-            var networkDetectionService = _services.GetRequiredService<INetworkDetectionService>();
-            using var settingsForm = new SettingsForm(_settingsManager, networkDetectionService);
-            _settingsForm = settingsForm;
-            try
-            {
-                if (owner != null)
-                    settingsForm.StartPosition = FormStartPosition.CenterParent;
-                settingsForm.ShowDialog(owner);
-            }
-            finally
-            {
-                _settingsForm = null;
-            }
-        }
-
-        private void OnReports(object? sender, EventArgs e)
+        private void ShowWindow(bool settings)
         {
             if (_mainWindow is null)
             {
                 var report = new ReportView(_serviceProvider, _services.GetRequiredService<IDateTimeProvider>());
-                var window = new MainWindow(report);
-                report.SettingsRequested += (_, _) =>
-                    ShowSettings(new WindowOwner(new System.Windows.Interop.WindowInteropHelper(window).Handle));
+                var settingsView = new SettingsView(_settingsManager, _services.GetRequiredService<INetworkDetectionService>());
+                var window = new MainWindow(report, settingsView);
                 report.RecordsChanged += (_, _) => UpdateAttendanceCount(recordAttendance: false);
-                window.Activated += (_, _) => report.RefreshReport();
                 window.Closed += (_, _) =>
                 {
                     _mainWindow = null;
                     _report = null;
                 };
+
                 _mainWindow = window;
                 _report = report;
+                window.SelectPage(settings);
                 window.Show();
+            }
+            else
+            {
+                _mainWindow.SelectPage(settings);
             }
 
             if (_mainWindow.WindowState == System.Windows.WindowState.Minimized)
                 _mainWindow.WindowState = System.Windows.WindowState.Normal;
             _mainWindow.Activate();
         }
-
-        private sealed record WindowOwner(IntPtr Handle) : IWin32Window;
 
 
         private void OnSettingsChanged(object? sender, AppSettings settings)

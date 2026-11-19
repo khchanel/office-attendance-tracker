@@ -1,0 +1,218 @@
+using System.Diagnostics;
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using OfficeAttendanceTracker.Core;
+using MessageBox = System.Windows.MessageBox;
+using UserControl = System.Windows.Controls.UserControl;
+
+namespace OfficeAttendanceTracker.Desktop;
+
+/// <summary>Edits and applies desktop settings.</summary>
+public partial class SettingsView : UserControl
+{
+    private readonly SettingsManager _settingsManager;
+    private readonly INetworkDetectionService _networkDetectionService;
+
+    internal event EventHandler? Cancelled;
+
+    internal SettingsView(SettingsManager settingsManager, INetworkDetectionService networkDetectionService)
+    {
+        _settingsManager = settingsManager;
+        _networkDetectionService = networkDetectionService;
+        InitializeComponent();
+        var settings = settingsManager.CurrentSettings;
+        Welcome.Visibility = settingsManager.IsFirstRun && settings.Networks.Count == 0
+            ? Visibility.Visible : Visibility.Collapsed;
+        LoadSettings(settings);
+    }
+
+    private void LoadSettings(AppSettings settings)
+    {
+        Networks.Text = string.Join(Environment.NewLine, settings.Networks);
+        PollInterval.Text = Math.Clamp(settings.PollIntervalMs / 1000, 60, 86400).ToString();
+        AutomaticTracking.IsChecked = settings.EnableBackgroundWorker;
+        StartWithWindows.IsChecked = settings.StartWithWindows;
+        Threshold.Text = (settings.ComplianceThreshold * 100).ToString("0.##");
+        TimeMode.SelectedIndex = Enum.IsDefined(settings.OfficeTimeTrackingMode) ? (int)settings.OfficeTimeTrackingMode : 0;
+        MinimumHours.Text = Math.Clamp(settings.MinimumOfficeHours, 0.01m, 24m).ToString("0.##");
+        DataFolder.Text = settings.DataFilePath ?? string.Empty;
+        FileName.Text = settings.DataFileName;
+        SetFeedback("");
+    }
+
+    private void TimeModeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (MinimumHoursField is not null)
+            MinimumHoursField.Visibility = TimeMode.SelectedIndex > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private string[] ReadNetworks() =>
+        Networks.Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private void SaveSettings(object sender, RoutedEventArgs e)
+    {
+        var networks = ReadNetworks();
+        if (networks.Length == 0)
+        {
+            Invalid(Networks, "Enter at least one network in CIDR format.");
+            return;
+        }
+
+        var invalid = networks.Where(network => !_networkDetectionService.IsValidCidr(network)).ToArray();
+        if (invalid.Length > 0)
+        {
+            Invalid(Networks, $"Invalid CIDR: {string.Join(", ", invalid)}. Example: 192.168.1.0/24.");
+            return;
+        }
+        if (!int.TryParse(PollInterval.Text, out var seconds) || seconds is < 60 or > 86400)
+        {
+            Invalid(PollInterval, "Enter a poll interval from 60 to 86400 seconds.");
+            return;
+        }
+        if (!decimal.TryParse(Threshold.Text, out var threshold) || threshold is < 0 or > 100)
+        {
+            Invalid(Threshold, "Enter a compliance threshold from 0 to 100 percent.");
+            return;
+        }
+
+        var settings = _settingsManager.CurrentSettings;
+        if (!decimal.TryParse(MinimumHours.Text, out var hours) || hours is < 0.01m or > 24m)
+        {
+            if (TimeMode.SelectedIndex > 0)
+            {
+                Invalid(MinimumHours, "Enter minimum office hours from 0.01 to 24.");
+                return;
+            }
+            hours = settings.MinimumOfficeHours;
+        }
+
+        var fileName = FileName.Text.Trim();
+        if (Path.GetExtension(fileName).ToLowerInvariant() is not (".csv" or ".json"))
+        {
+            Invalid(FileName, "Enter an attendance file name ending in .csv or .json.");
+            return;
+        }
+
+        try
+        {
+            var folder = string.IsNullOrWhiteSpace(DataFolder.Text) ? null : DataFolder.Text;
+            _ = ResolveFilePath(folder, fileName);
+            settings.Networks = [.. networks];
+            settings.PollIntervalMs = seconds * 1000;
+            settings.EnableBackgroundWorker = AutomaticTracking.IsChecked == true;
+            settings.StartWithWindows = StartWithWindows.IsChecked == true;
+            settings.ComplianceThreshold = (double)(threshold / 100);
+            settings.OfficeTimeTrackingMode = (OfficeTimeTrackingMode)TimeMode.SelectedIndex;
+            settings.MinimumOfficeHours = hours;
+            settings.DataFilePath = folder;
+            settings.DataFileName = fileName;
+
+            if (settings.StartWithWindows != _settingsManager.IsStartupEnabled())
+                _settingsManager.SetStartupEnabled(settings.StartWithWindows);
+            _settingsManager.SaveSettings(settings);
+        }
+        catch (Exception ex)
+        {
+            SetFeedback($"Could not save settings: {ex.Message}", true);
+            return;
+        }
+
+        Welcome.Visibility = Visibility.Collapsed;
+        SetFeedback("Settings saved and applied.");
+    }
+
+    private void CancelSettings(object sender, RoutedEventArgs e)
+    {
+        LoadSettings(_settingsManager.CurrentSettings);
+        Cancelled?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ResetSettings(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show(Window.GetWindow(this), "Reset all settings to their defaults? Click Save to apply them.",
+                "Reset to default", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes)
+        {
+            LoadSettings(AppSettings.CreateDesktopDefaults());
+            SetFeedback("Defaults loaded. Click Save to apply them.");
+        }
+    }
+
+    private void DetectNetworks(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var detected = _networkDetectionService.DetectCurrentNetworks();
+            var existing = ReadNetworks();
+            var added = detected.Except(existing, StringComparer.OrdinalIgnoreCase).ToArray();
+            if (added.Length == 0)
+            {
+                SetFeedback(detected.Count == 0 ? "No active network connections found." : "All detected networks are already listed.");
+                return;
+            }
+
+            Networks.Text = string.Join(Environment.NewLine, existing.Concat(added));
+            SetFeedback($"Added {string.Join(", ", added)}. Click Save to apply.");
+        }
+        catch (Exception ex)
+        {
+            SetFeedback($"Could not detect networks: {ex.Message}", true);
+        }
+    }
+
+    private void BrowseFolder(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var folder = SettingsManager.ResolveDataFolder(DataFolder.Text);
+            var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Select data file folder" };
+            if (Directory.Exists(folder))
+                dialog.InitialDirectory = Path.GetFullPath(folder);
+            if (dialog.ShowDialog(Window.GetWindow(this)) == true)
+                DataFolder.Text = dialog.FolderName;
+        }
+        catch (Exception ex)
+        {
+            SetFeedback($"Could not browse for a folder: {ex.Message}", true);
+        }
+    }
+
+    private void OpenFolder(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var fileName = FileName.Text.Trim();
+            var folder = fileName.Length == 0
+                ? Path.GetFullPath(SettingsManager.ResolveDataFolder(DataFolder.Text))
+                : Path.GetDirectoryName(ResolveFilePath(DataFolder.Text, fileName));
+            if (!Directory.Exists(folder))
+            {
+                SetFeedback($"Folder could not be found: {folder}", true);
+                return;
+            }
+
+            using var process = Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true, Verb = "open" });
+        }
+        catch (Exception ex)
+        {
+            SetFeedback($"Could not open the folder: {ex.Message}", true);
+        }
+    }
+
+    private static string ResolveFilePath(string? folder, string fileName) =>
+        Path.GetFullPath(Path.Combine(SettingsManager.ResolveDataFolder(folder), fileName));
+
+    private void Invalid(System.Windows.Controls.Control field, string message)
+    {
+        SetFeedback(message, true);
+        field.Focus();
+        field.BringIntoView();
+    }
+
+    private void SetFeedback(string text, bool error = false)
+    {
+        Feedback.Text = text;
+        Feedback.Foreground = error ? System.Windows.Media.Brushes.Firebrick : System.Windows.Media.Brushes.DarkSlateGray;
+        Feedback.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+    }
+}

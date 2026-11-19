@@ -52,7 +52,6 @@
             <TextBlock Text="Monthly attendance" FontSize="25" FontWeight="SemiBold" />
         </DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-            <Button DockPanel.Dock="Right" x:Name="SettingsButton" Content="Settings…" Click="OpenSettings" />
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="PreviousButton" Content="Previous" Click="PreviousMonth" Margin="0,0,8,0" />
                 <TextBlock x:Name="MonthHeading" FontSize="16" FontWeight="SemiBold" Width="145" VerticalAlignment="Center" TextAlignment="Center" />

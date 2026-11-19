@@ -1,0 +1,120 @@
+<UserControl x:Class="OfficeAttendanceTracker.Desktop.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#F6F8FB" Foreground="#1E2F48" FontFamily="Segoe UI" FontSize="13">
+    <UserControl.Resources>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="5,3" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="MinHeight" Value="28" />
+        </Style>
+    </UserControl.Resources>
+    <DockPanel Margin="20,14,20,16" MaxWidth="740">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <TextBlock Text="Settings" FontSize="25" FontWeight="SemiBold" />
+            <TextBlock x:Name="Welcome" Text="Add your office networks to begin tracking attendance."
+                       Margin="0,4,0,0" Foreground="#485466" TextWrapping="Wrap" Visibility="Collapsed" />
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <TextBlock x:Name="Feedback" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+                       Margin="0,0,0,8" Visibility="Collapsed" />
+            <DockPanel>
+                <Button DockPanel.Dock="Left" Content="Reset to default" Click="ResetSettings" />
+                <Button DockPanel.Dock="Right" Content="_Save" Click="SaveSettings" MinWidth="72" />
+                <Button DockPanel.Dock="Right" Content="Cancel" Click="CancelSettings" MinWidth="72" Margin="8,0" />
+                <Border />
+            </DockPanel>
+        </StackPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Grid.IsSharedSizeScope="True">
+                <GroupBox Header="Tracking" Padding="12" Margin="0,0,0,12">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition SharedSizeGroup="Labels" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Content="Office _networks (CIDR)" Target="{Binding ElementName=Networks}" Padding="0,4,14,4" />
+                            <DockPanel Grid.Column="1">
+                                <Button DockPanel.Dock="Right" Content="Detect current" Click="DetectNetworks" Margin="8,0,0,0" VerticalAlignment="Top" />
+                                <TextBox x:Name="Networks" AcceptsReturn="True" Height="70" VerticalScrollBarVisibility="Auto" />
+                            </DockPanel>
+                        </Grid>
+                        <TextBlock Text="One CIDR per line, for example 192.168.1.0/24." Foreground="#485466" Margin="0,0,0,8" />
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition SharedSizeGroup="Labels" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Content="_Poll interval (seconds)" Target="{Binding ElementName=PollInterval}" Padding="0,4,14,4" />
+                            <TextBox Grid.Column="1" x:Name="PollInterval" Width="96" HorizontalAlignment="Left" />
+                        </Grid>
+                        <CheckBox x:Name="AutomaticTracking" Content="Enable automatic tracking" Margin="0,0,0,8" />
+                        <CheckBox x:Name="StartWithWindows" Content="Start with Windows" />
+                    </StackPanel>
+                </GroupBox>
+                <GroupBox Header="Attendance rules" Padding="12" Margin="0,0,0,12">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition SharedSizeGroup="Labels" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Content="_Compliance threshold (%)" Target="{Binding ElementName=Threshold}" Padding="0,4,14,4" />
+                            <TextBox Grid.Column="1" x:Name="Threshold" Width="96" HorizontalAlignment="Left" />
+                        </Grid>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition SharedSizeGroup="Labels" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Content="Office _time tracking" Target="{Binding ElementName=TimeMode}" Padding="0,4,14,4" />
+                            <ComboBox Grid.Column="1" x:Name="TimeMode" HorizontalAlignment="Left" MinWidth="210" SelectionChanged="TimeModeChanged"
+                                      ToolTip="First to last includes gaps between visits. Accumulated time credits consecutive office polls.">
+                                <ComboBoxItem Content="Off" />
+                                <ComboBoxItem Content="First to last detection" />
+                                <ComboBoxItem Content="Accumulated office time" />
+                            </ComboBox>
+                        </Grid>
+                        <Grid Margin="0,0,0,8" x:Name="MinimumHoursField" Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition SharedSizeGroup="Labels" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Content="_Minimum office hours" Target="{Binding ElementName=MinimumHours}" Padding="0,4,14,4" />
+                            <TextBox Grid.Column="1" x:Name="MinimumHours" Width="96" HorizontalAlignment="Left" />
+                        </Grid>
+                    </StackPanel>
+                </GroupBox>
+                <GroupBox Header="Data file" Padding="12">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition SharedSizeGroup="Labels" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Content="Data _folder" Target="{Binding ElementName=DataFolder}" Padding="0,4,14,4" />
+                            <DockPanel Grid.Column="1">
+                                <Button DockPanel.Dock="Right" Content="Browse…" Click="BrowseFolder" Margin="8,0,0,0" VerticalAlignment="Top" />
+                                <TextBox x:Name="DataFolder" ToolTip="Leave blank to use your user profile folder." />
+                            </DockPanel>
+                        </Grid>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition SharedSizeGroup="Labels" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Content="File n_ame" Target="{Binding ElementName=FileName}" Padding="0,4,14,4" />
+                            <DockPanel Grid.Column="1">
+                                <Button DockPanel.Dock="Right" Content="Open folder" Click="OpenFolder" Margin="8,0,0,0" VerticalAlignment="Top" />
+                                <TextBox x:Name="FileName" ToolTip="CSV or JSON attendance file." />
+                            </DockPanel>
+                        </Grid>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>
