@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Automation.Peers;
@@ -36,12 +37,26 @@ public partial class SettingsView : UserControl
         PollInterval.Text = Math.Clamp(settings.PollIntervalMs / 1000, 60, 86400).ToString();
         AutomaticTracking.IsChecked = settings.EnableBackgroundWorker;
         StartWithWindows.IsChecked = settings.StartWithWindows;
-        Threshold.Text = (settings.ComplianceThreshold * 100).ToString("0.##");
+        Threshold.Text = FormatThreshold(settings.ComplianceThreshold);
         TimeMode.SelectedIndex = Enum.IsDefined(settings.OfficeTimeTrackingMode) ? (int)settings.OfficeTimeTrackingMode : 0;
-        MinimumHours.Text = Math.Clamp(settings.MinimumOfficeHours, 0.01m, 24m).ToString("0.##");
+        MinimumHours.Text = Math.Clamp(settings.MinimumOfficeHours, 0.01m, 24m).ToString("G29");
         DataFolder.Text = settings.DataFilePath ?? string.Empty;
         FileName.Text = settings.DataFileName;
         ClearFeedback();
+    }
+
+    private static string FormatThreshold(double threshold)
+    {
+        var culture = CultureInfo.CurrentCulture;
+        // Scale the shortest round-trip representation to avoid binary rounding in the displayed percentage.
+        if (threshold is >= 0 and <= 1 &&
+            decimal.TryParse(threshold.ToString(culture), NumberStyles.Float, culture, out var fraction) &&
+            (fraction != 0 || threshold == 0))
+        {
+            return (fraction * 100).ToString("0.############################", culture);
+        }
+
+        return (threshold * 100).ToString(culture);
     }
 
     private void TimeModeChanged(object sender, SelectionChangedEventArgs e)
@@ -73,7 +88,8 @@ public partial class SettingsView : UserControl
             Invalid(PollInterval, "Enter a poll interval from 60 to 86400 seconds.");
             return;
         }
-        if (!decimal.TryParse(Threshold.Text, out var threshold) || threshold is < 0 or > 100)
+        if (!decimal.TryParse(Threshold.Text, NumberStyles.Number | NumberStyles.AllowExponent,
+                CultureInfo.CurrentCulture, out var threshold) || threshold is < 0 or > 100)
         {
             Invalid(Threshold, "Enter a compliance threshold from 0 to 100 percent.");
             return;
@@ -105,7 +121,8 @@ public partial class SettingsView : UserControl
             settings.PollIntervalMs = seconds * 1000;
             settings.EnableBackgroundWorker = AutomaticTracking.IsChecked == true;
             settings.StartWithWindows = StartWithWindows.IsChecked == true;
-            settings.ComplianceThreshold = (double)(threshold / 100);
+            if (Threshold.Text != _savedDraft.Threshold)
+                settings.ComplianceThreshold = (double)(threshold / 100);
             settings.OfficeTimeTrackingMode = (OfficeTimeTrackingMode)TimeMode.SelectedIndex;
             settings.MinimumOfficeHours = hours;
             settings.DataFilePath = folder;
