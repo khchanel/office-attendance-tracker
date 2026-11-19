@@ -1,0 +1,169 @@
+<UserControl x:Class="OfficeAttendanceTracker.Desktop.ReportView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#F6F8FB" Foreground="#1E2F48" FontFamily="Segoe UI" FontSize="13">
+    <UserControl.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="MinHeight" Value="28" />
+        </Style>
+        <Style x:Key="Metric" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="26" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Text" Value="--" />
+        </Style>
+        <Style x:Key="CalendarCell" TargetType="Button">
+            <Setter Property="Background" Value="{Binding Background}" />
+            <Setter Property="BorderBrush" Value="#D2D8E1" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="1" />
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Date}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Hidden" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="BorderBrush" Value="#2655A0" />
+                    <Setter Property="BorderThickness" Value="2" />
+                </DataTrigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#2655A0" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="#2655A0" />
+                    <Setter Property="BorderThickness" Value="2" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+    <DockPanel Margin="20,14,20,16">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <TextBlock DockPanel.Dock="Right" x:Name="ConfiguredTarget" VerticalAlignment="Center" Foreground="#485466" />
+            <TextBlock Text="Monthly attendance" FontSize="25" FontWeight="SemiBold" />
+        </DockPanel>
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button DockPanel.Dock="Right" x:Name="SettingsButton" Content="Settings…" Click="OpenSettings" />
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="PreviousButton" Content="Previous" Click="PreviousMonth" Margin="0,0,8,0" />
+                <TextBlock x:Name="MonthHeading" FontSize="16" FontWeight="SemiBold" Width="145" VerticalAlignment="Center" TextAlignment="Center" />
+                <Button x:Name="NextButton" Content="Next" Click="NextMonth" Margin="8,0" />
+                <Button Content="This month" Click="ThisMonth" Margin="0,0,8,0" />
+                <Button Content="Refresh" Click="Refresh" Margin="0,0,8,0" />
+                <DatePicker x:Name="MonthPicker" Width="122" SelectedDateChanged="PickMonth"
+                            AutomationProperties.Name="Jump to month" ToolTip="Choose a date to view its month" />
+            </StackPanel>
+        </DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+            <UniformGrid Columns="4" Margin="0,0,0,8">
+                <Border Background="White" Padding="14,8" Margin="0,0,8,0">
+                    <StackPanel>
+                        <TextBlock Text="In office" Foreground="#485466" />
+                        <TextBlock x:Name="OfficeDays" Style="{StaticResource Metric}" AutomationProperties.Name="In office" />
+                    </StackPanel>
+                </Border>
+                <Border Background="White" Padding="14,8" Margin="0,0,8,0">
+                    <StackPanel>
+                        <TextBlock Text="Required days" Foreground="#485466" />
+                        <TextBlock x:Name="RequiredDays" Style="{StaticResource Metric}" AutomationProperties.Name="Required days" />
+                    </StackPanel>
+                </Border>
+                <Border Background="White" Padding="14,8" Margin="0,0,8,0">
+                    <StackPanel>
+                        <TextBlock Text="Business days" Foreground="#485466" />
+                        <TextBlock x:Name="BusinessDays" Style="{StaticResource Metric}" AutomationProperties.Name="Business days" />
+                    </StackPanel>
+                </Border>
+                <Border x:Name="RateCard" Background="White" Padding="14,8" Margin="0">
+                    <StackPanel>
+                        <TextBlock Text="Attendance" Foreground="#485466" />
+                        <TextBlock x:Name="AttendanceRate" Style="{StaticResource Metric}" AutomationProperties.Name="Attendance" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+            <TextBlock x:Name="Outcome" Padding="8,5" FontWeight="SemiBold" AutomationProperties.LiveSetting="Polite" />
+            <ProgressBar x:Name="TargetProgress" Maximum="100" Height="6" BorderThickness="0"
+                         Background="#E4E7EC" AutomationProperties.Name="Monthly target progress" />
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button x:Name="DayOffButton" Content="Set day off" Click="ToggleDayOff" Margin="8,0,0,0" />
+                    <Button x:Name="OfficeButton" Content="Set in office" Click="ToggleOffice" Margin="8,0,0,0" />
+                    <Button x:Name="ClearButton" Content="Clear day" Click="ClearDay" Margin="8,0,0,0"
+                            ToolTip="Clear all entries for this day." />
+                </StackPanel>
+                <TextBlock x:Name="SelectedDetail" VerticalAlignment="Center" TextWrapping="Wrap" />
+            </DockPanel>
+            <TextBlock x:Name="Error" TextWrapping="Wrap" Foreground="#A01C26" Visibility="Collapsed"
+                       Margin="0,6,0,0" AutomationProperties.LiveSetting="Polite" />
+        </StackPanel>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="56*" />
+                <ColumnDefinition Width="44*" />
+            </Grid.ColumnDefinitions>
+            <GroupBox Header="Calendar" Margin="0,0,8,0" Padding="6">
+                <DockPanel>
+                    <UniformGrid DockPanel.Dock="Top" Columns="7" Margin="0,3,0,4">
+                        <TextBlock Text="Mon" TextAlignment="Center" />
+                        <TextBlock Text="Tue" TextAlignment="Center" />
+                        <TextBlock Text="Wed" TextAlignment="Center" />
+                        <TextBlock Text="Thu" TextAlignment="Center" />
+                        <TextBlock Text="Fri" TextAlignment="Center" />
+                        <TextBlock Text="Sat" TextAlignment="Center" />
+                        <TextBlock Text="Sun" TextAlignment="Center" />
+                    </UniformGrid>
+                    <ItemsControl x:Name="Calendar">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><UniformGrid Columns="7" Rows="6" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource CalendarCell}" Click="SelectCalendarDay"
+                                        ToolTip="{Binding Description}" AutomationProperties.Name="{Binding Description}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Number}" FontWeight="SemiBold" TextAlignment="Center" />
+                                        <TextBlock Text="{Binding Caption}" FontSize="11" TextAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DockPanel>
+            </GroupBox>
+            <GroupBox Grid.Column="1" Header="Daily records" Padding="6">
+                <DockPanel>
+                    <ComboBox x:Name="Filter" DockPanel.Dock="Top" HorizontalAlignment="Left" MinWidth="148"
+                              Margin="0,2,0,6" SelectionChanged="FilterChanged" AutomationProperties.Name="Filter daily records" />
+                    <DataGrid x:Name="Records" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False"
+                              CanUserSortColumns="False" CanUserResizeRows="False" CanUserReorderColumns="False"
+                              SelectionMode="Single" SelectionUnit="FullRow" HeadersVisibility="Column"
+                              GridLinesVisibility="None" Background="White" BorderThickness="0" RowHeight="24"
+                              SelectionChanged="RecordChanged" AutomationProperties.Name="Daily records">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="Background" Value="{Binding Background}" />
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=dd MMM yyyy}" Width="1.25*" />
+                            <DataGridTextColumn Header="Day" Binding="{Binding Date, StringFormat=ddd}" Width="0.65*" />
+                            <DataGridTextColumn Header="Record" Binding="{Binding Status}" Width="1.45*" />
+                            <DataGridTextColumn x:Name="OfficeTime" Header="Office time" Binding="{Binding Hours}" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </GroupBox>
+        </Grid>
+    </DockPanel>
+</UserControl>

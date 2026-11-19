@@ -21,7 +21,8 @@ namespace OfficeAttendanceTracker.Desktop
         private int _lastCount = -1;
         private ComplianceStatus? _lastComplianceStatus;
         private SettingsForm? _settingsForm;
-        private ReportsForm? _reportsForm;
+        private MainWindow? _mainWindow;
+        private ReportView? _report;
 
         /// <summary>
         /// Gets the current AttendanceService instance (may be recreated on settings change)
@@ -110,7 +111,7 @@ namespace OfficeAttendanceTracker.Desktop
         private void OnServiceRecreated(object? sender, IAttendanceService newService)
         {
             UpdateAttendanceCount(showBalloonTip: true, recordAttendance: false);
-            _reportsForm?.RefreshReport();
+            _report?.RefreshReport();
         }
 
         private static string GetComplianceStatusText(ComplianceStatus status)
@@ -212,7 +213,7 @@ namespace OfficeAttendanceTracker.Desktop
 
                 // Tray refreshes and scheduled polls update the open report after the check.
                 if (recordAttendance)
-                    _reportsForm?.RefreshReport();
+                    _report?.RefreshReport();
 
                 var count = service.GetCurrentMonthAttendance();
                 var requiredDays = service.CalculateRequiredOfficeDays(service.GetBusinessDaysInCurrentMonth());
@@ -272,7 +273,7 @@ namespace OfficeAttendanceTracker.Desktop
 
         private void OnSettings(object? sender, EventArgs e) => ShowSettings();
 
-        private void ShowSettings(Form? owner = null)
+        private void ShowSettings(IWin32Window? owner = null)
         {
             // If settings form is already open, bring it to front
             if (_settingsForm != null && !_settingsForm.IsDisposed)
@@ -300,21 +301,31 @@ namespace OfficeAttendanceTracker.Desktop
 
         private void OnReports(object? sender, EventArgs e)
         {
-            if (_reportsForm != null && !_reportsForm.IsDisposed)
+            if (_mainWindow is null)
             {
-                if (_reportsForm.WindowState == FormWindowState.Minimized)
-                    _reportsForm.WindowState = FormWindowState.Normal;
-                _reportsForm.Activate();
-                return;
+                var report = new ReportView(_serviceProvider, _services.GetRequiredService<IDateTimeProvider>());
+                var window = new MainWindow(report);
+                report.SettingsRequested += (_, _) =>
+                    ShowSettings(new WindowOwner(new System.Windows.Interop.WindowInteropHelper(window).Handle));
+                report.RecordsChanged += (_, _) => UpdateAttendanceCount(recordAttendance: false);
+                window.Activated += (_, _) => report.RefreshReport();
+                window.Closed += (_, _) =>
+                {
+                    _mainWindow = null;
+                    _report = null;
+                };
+                _mainWindow = window;
+                _report = report;
+                window.Show();
             }
 
-            var reportsForm = new ReportsForm(_serviceProvider, _services.GetRequiredService<IDateTimeProvider>());
-            _reportsForm = reportsForm;
-            reportsForm.SettingsRequested += (_, _) => ShowSettings(reportsForm);
-            reportsForm.RecordsChanged += (_, _) => UpdateAttendanceCount(recordAttendance: false);
-            reportsForm.FormClosed += (_, _) => _reportsForm = null;
-            reportsForm.Show();
+            if (_mainWindow.WindowState == System.Windows.WindowState.Minimized)
+                _mainWindow.WindowState = System.Windows.WindowState.Normal;
+            _mainWindow.Activate();
         }
+
+        private sealed record WindowOwner(IntPtr Handle) : IWin32Window;
+
 
         private void OnSettingsChanged(object? sender, AppSettings settings)
         {
@@ -343,7 +354,7 @@ namespace OfficeAttendanceTracker.Desktop
 
         public void Dispose()
         {
-            _reportsForm?.Close();
+            _mainWindow?.Close();
             _trayClickTimer.Stop();
             _updateTimer.Stop();
             _serviceProvider.ServiceRecreated -= OnServiceRecreated;
