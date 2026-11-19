@@ -36,7 +36,7 @@ namespace OfficeAttendanceTracker.Desktop
                 "ComplianceThreshold" => settings.ComplianceThreshold.ToString(),
                 "OfficeTimeTrackingMode" => settings.OfficeTimeTrackingMode.ToString(),
                 "MinimumOfficeHours" => settings.MinimumOfficeHours.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                "DataFilePath" => settings.DataFilePath ?? string.Empty,
+                "DataFilePath" => SettingsManager.ResolveDataFolder(settings.DataFilePath),
                 "DataFileName" => settings.DataFileName,
                 _ when key.StartsWith("Networks:") => GetNetworkValue(key, settings),
                 _ => null

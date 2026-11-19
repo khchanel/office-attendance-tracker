@@ -1,4 +1,5 @@
-﻿using System.Windows.Forms;
+﻿using System.Diagnostics;
+using System.Windows.Forms;
 using OfficeAttendanceTracker.Core;
 
 namespace OfficeAttendanceTracker.Desktop
@@ -264,12 +265,28 @@ namespace OfficeAttendanceTracker.Desktop
             };
             _dataFileNameTextBox = new TextBox
             {
-                Dock = DockStyle.Left,
                 Width = 200
             };
+            var fileNamePanel = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                WrapContents = false,
+                Anchor = AnchorStyles.Left | AnchorStyles.Top,
+                Margin = Padding.Empty
+            };
+            var openFolderButton = new Button
+            {
+                Text = "Open Folder",
+                AutoSize = true,
+                Margin = new Padding(5, 0, 0, 0)
+            };
+            openFolderButton.Click += OpenFolderButton_Click;
+            toolTip.SetToolTip(openFolderButton, "Open the attendance file's folder in File Explorer.");
+            fileNamePanel.Controls.Add(_dataFileNameTextBox);
+            fileNamePanel.Controls.Add(openFolderButton);
             toolTip.SetToolTip(_dataFileNameTextBox, "Name of the attendance file.\nSupported formats: .csv or .json\n\nApplied immediately after save.");
             mainPanel.Controls.Add(dataFileNameLabel, 0, 8);
-            mainPanel.Controls.Add(_dataFileNameTextBox, 1, 8);
+            mainPanel.Controls.Add(fileNamePanel, 1, 8);
 
             // Buttons
             var buttonPanel = new Panel
@@ -355,14 +372,40 @@ namespace OfficeAttendanceTracker.Desktop
                 ShowNewFolderButton = true
             };
 
-            if (!string.IsNullOrEmpty(_dataFilePathTextBox.Text) && Directory.Exists(_dataFilePathTextBox.Text))
+            var folder = SettingsManager.ResolveDataFolder(_dataFilePathTextBox.Text);
+            if (Directory.Exists(folder))
             {
-                folderDialog.SelectedPath = _dataFilePathTextBox.Text;
+                folderDialog.SelectedPath = folder;
             }
 
             if (folderDialog.ShowDialog(this) == DialogResult.OK)
             {
                 _dataFilePathTextBox.Text = folderDialog.SelectedPath;
+            }
+        }
+
+        private void OpenFolderButton_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                var folder = SettingsManager.ResolveDataFolder(_dataFilePathTextBox.Text);
+                var fileName = _dataFileNameTextBox.Text.Trim();
+                var fileFolder = fileName.Length == 0
+                    ? Path.GetFullPath(folder)
+                    : Path.GetDirectoryName(Path.GetFullPath(Path.Combine(folder, fileName)));
+                if (fileFolder == null || !Directory.Exists(fileFolder))
+                {
+                    MessageBox.Show(this, $"The folder could not be found:\n{fileFolder}",
+                        "Open Folder", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                using var process = Process.Start(new ProcessStartInfo(fileFolder) { UseShellExecute = true, Verb = "open" });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Could not open the folder: {ex.Message}",
+                    "Open Folder", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
