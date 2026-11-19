@@ -195,6 +195,10 @@ namespace OfficeAttendanceTracker.Desktop
                     isInOffice = service.CheckAttendance();
                 }
 
+                // Tray refreshes and scheduled polls update the open report after the check.
+                if (recordAttendance)
+                    _reportsForm?.RefreshReport();
+
                 var count = service.GetCurrentMonthAttendance();
                 var requiredDays = service.CalculateRequiredOfficeDays(service.GetBusinessDaysInCurrentMonth());
                 var targetPercentage = _settingsManager.CurrentSettings.ComplianceThreshold;
