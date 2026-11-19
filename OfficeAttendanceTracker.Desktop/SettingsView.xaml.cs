@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using OfficeAttendanceTracker.Core;
 using UserControl = System.Windows.Controls.UserControl;
@@ -40,6 +41,7 @@ public partial class SettingsView : UserControl
         MinimumHours.Text = Math.Clamp(settings.MinimumOfficeHours, 0.01m, 24m).ToString("0.##");
         DataFolder.Text = settings.DataFilePath ?? string.Empty;
         FileName.Text = settings.DataFileName;
+        SetNetworkFeedback();
         SetFeedback("");
     }
 
@@ -120,6 +122,7 @@ public partial class SettingsView : UserControl
 
         _savedDraft = ReadDraft();
         Welcome.Visibility = Visibility.Collapsed;
+        SetNetworkFeedback();
         SetFeedback("Settings saved and applied.");
     }
 
@@ -145,6 +148,20 @@ public partial class SettingsView : UserControl
         }
     }
 
+    private void NetworksChanged(object sender, TextChangedEventArgs e)
+    {
+        if (NetworkFeedback is not null)
+            SetNetworkFeedback();
+    }
+
+    private void SetNetworkFeedback(string? message = null, bool error = false)
+    {
+        NetworkFeedback.Text = message ?? "One CIDR per line, for example 192.168.1.0/24.";
+        NetworkFeedback.Foreground = error ? System.Windows.Media.Brushes.Firebrick : System.Windows.Media.Brushes.DarkSlateGray;
+        if (message is not null)
+            UIElementAutomationPeer.CreatePeerForElement(NetworkFeedback)?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+    }
+
     private void DetectNetworks(object sender, RoutedEventArgs e)
     {
         try
@@ -154,16 +171,17 @@ public partial class SettingsView : UserControl
             var added = detected.Except(existing, StringComparer.OrdinalIgnoreCase).ToArray();
             if (added.Length == 0)
             {
-                SetFeedback(detected.Count == 0 ? "No active network connections found." : "All detected networks are already listed.");
+                SetNetworkFeedback(detected.Count == 0 ? "No active network connections found." : "All detected networks are already listed.");
                 return;
             }
 
             Networks.Text = string.Join(Environment.NewLine, existing.Concat(added));
-            SetFeedback($"Added {string.Join(", ", added)}. Click Save to apply.");
+            var count = added.Length == 1 ? "1 network" : $"{added.Length} networks";
+            SetNetworkFeedback($"Added {count}. Click Save to apply.");
         }
         catch (Exception ex)
         {
-            SetFeedback($"Could not detect networks: {ex.Message}", true);
+            SetNetworkFeedback($"Could not detect networks: {ex.Message}", true);
         }
     }
 
