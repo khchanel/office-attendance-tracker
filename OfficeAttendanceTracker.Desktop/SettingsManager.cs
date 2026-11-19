@@ -73,22 +73,63 @@ namespace OfficeAttendanceTracker.Desktop
             return AppSettings.CreateDesktopDefaults();
         }
 
+        /// <summary>Persists settings and applies them to the running desktop services.</summary>
         public void SaveSettings(AppSettings settings)
         {
             lock (_lock)
             {
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                };
-
-                var json = JsonSerializer.Serialize(settings, options);
-                File.WriteAllText(_settingsFilePath, json);
-
+                var previous = _currentSettings;
+                WriteSettings(settings);
                 _currentSettings = settings.Clone();
-                SettingsChanged?.Invoke(this, _currentSettings.Clone());
+                try
+                {
+                    SettingsChanged?.Invoke(this, _currentSettings.Clone());
+                }
+                catch
+                {
+                    // A replacement attendance store can reject an unreadable or unwritable file.
+                    _currentSettings = previous;
+                    WriteSettings(previous);
+                    throw;
+                }
             }
         }
+
+        internal void ApplySettings(AppSettings settings)
+        {
+            var wasRegistered = IsStartupEnabled();
+            var updateRegistration = settings.StartWithWindows != wasRegistered;
+            if (updateRegistration)
+                SetStartupEnabled(settings.StartWithWindows);
+
+            try
+            {
+                SaveSettings(settings);
+            }
+            catch
+            {
+                if (updateRegistration)
+                    SetStartupEnabled(wasRegistered);
+                throw;
+            }
+        }
+
+        private void WriteSettings(AppSettings settings)
+        {
+            var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            var tempPath = $"{_settingsFilePath}.{Guid.NewGuid():N}.tmp";
+            try
+            {
+                File.WriteAllText(tempPath, json);
+                File.Move(tempPath, _settingsFilePath, overwrite: true);
+            }
+            finally
+            {
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
+            }
+        }
+
 
         public void ReloadSettings()
         {

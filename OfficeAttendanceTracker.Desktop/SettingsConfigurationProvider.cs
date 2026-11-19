@@ -33,7 +33,7 @@ namespace OfficeAttendanceTracker.Desktop
                 "Networks" => null, // Array handled by GetChildKeys
                 "PollIntervalMs" => settings.PollIntervalMs.ToString(),
                 "EnableBackgroundWorker" => settings.EnableBackgroundWorker.ToString(),
-                "ComplianceThreshold" => settings.ComplianceThreshold.ToString(),
+                "ComplianceThreshold" => settings.ComplianceThreshold.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 "OfficeTimeTrackingMode" => settings.OfficeTimeTrackingMode.ToString(),
                 "MinimumOfficeHours" => settings.MinimumOfficeHours.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 "DataFilePath" => SettingsManager.ResolveDataFolder(settings.DataFilePath),

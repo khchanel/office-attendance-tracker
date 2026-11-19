@@ -54,21 +54,11 @@ namespace OfficeAttendanceTracker.Desktop
                 _logger.LogInformation("Recreating AttendanceService with new configuration");
 
                 var oldStore = _currentStore;
-                
-                try
-                {
-                    var newService = CreateService(settings);
-                    _currentService = newService;
-                    
-                    ServiceRecreated?.Invoke(this, newService);
-                    
-                    _logger.LogInformation("AttendanceService recreated successfully");
-                }
-                finally
-                {
-                    // Dispose old store after transition
-                    oldStore?.Dispose();
-                }
+                _currentService = CreateService(settings);
+                oldStore?.Dispose();
+                ServiceRecreated?.Invoke(this, _currentService);
+
+                _logger.LogInformation("AttendanceService recreated successfully");
             }
         }
 
@@ -76,11 +66,20 @@ namespace OfficeAttendanceTracker.Desktop
         {
             var config = CreateConfiguration(settings);
             var store = CreateStore(settings.DataFileName, config);
-            store.Initialize();
-            _currentStore = store;
-
-            return new AttendanceService(_logger, config, _networkInfoProvider, store, _dateTimeProvider);
+            try
+            {
+                store.Initialize();
+                var service = new AttendanceService(_logger, config, _networkInfoProvider, store, _dateTimeProvider);
+                _currentStore = store;
+                return service;
+            }
+            catch
+            {
+                store.Dispose();
+                throw;
+            }
         }
+
 
         private static IAttendanceRecordStore CreateStore(string fileName, IConfiguration config)
         {
@@ -100,7 +99,7 @@ namespace OfficeAttendanceTracker.Desktop
             {
                 ["Networks:0"] = settings.Networks.Count > 0 ? settings.Networks[0] : null,
                 ["PollIntervalMs"] = settings.PollIntervalMs.ToString(),
-                ["ComplianceThreshold"] = settings.ComplianceThreshold.ToString(),
+                ["ComplianceThreshold"] = settings.ComplianceThreshold.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 ["OfficeTimeTrackingMode"] = settings.OfficeTimeTrackingMode.ToString(),
                 ["MinimumOfficeHours"] = settings.MinimumOfficeHours.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 ["DataFilePath"] = SettingsManager.ResolveDataFolder(settings.DataFilePath),

@@ -28,7 +28,6 @@ namespace OfficeAttendanceTracker.Desktop
         /// </summary>
         private IAttendanceService AttendanceService => _serviceProvider.Current;
 
-
         internal TrayApplicationContext(IServiceProvider services, SettingsManager settingsManager)
         {
             _services = services;
@@ -58,12 +57,12 @@ namespace OfficeAttendanceTracker.Desktop
             {
                 // Give Windows time to recognize a double-click before refreshing.
                 if (args.Button == MouseButtons.Left)
-                    {
+                {
                     _trayClickTimer.Stop();
                     _trayClickTimer.Start();
                 }
             };
-            _trayIcon.MouseDoubleClick += (sender, args) =>
+            _trayIcon.MouseDoubleClick += (_, args) =>
             {
                 if (args.Button == MouseButtons.Left)
                 {
@@ -204,8 +203,8 @@ namespace OfficeAttendanceTracker.Desktop
                     _report?.RefreshReport();
 
                 var count = service.GetCurrentMonthAttendance();
-                var requiredDays = service.CalculateRequiredOfficeDays(service.GetBusinessDaysInCurrentMonth());
                 var businessDays = service.GetBusinessDaysInCurrentMonth();
+                var requiredDays = service.CalculateRequiredOfficeDays(businessDays);
                 var attendancePercentage = businessDays == 0 ? "N/A" : (1.0 * count / businessDays).ToString("P2");
                 var currentMonth = DateTime.Today.ToString("MMMM yyyy");
 
@@ -287,7 +286,6 @@ namespace OfficeAttendanceTracker.Desktop
                 _mainWindow.WindowState = System.Windows.WindowState.Normal;
             _mainWindow.Activate();
         }
-
 
         private void OnSettingsChanged(object? sender, AppSettings settings)
         {

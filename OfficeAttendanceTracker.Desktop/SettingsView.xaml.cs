@@ -108,9 +108,7 @@ public partial class SettingsView : UserControl
             settings.DataFilePath = folder;
             settings.DataFileName = fileName;
 
-            if (settings.StartWithWindows != _settingsManager.IsStartupEnabled())
-                _settingsManager.SetStartupEnabled(settings.StartWithWindows);
-            _settingsManager.SaveSettings(settings);
+            _settingsManager.ApplySettings(settings);
         }
         catch (Exception ex)
         {
