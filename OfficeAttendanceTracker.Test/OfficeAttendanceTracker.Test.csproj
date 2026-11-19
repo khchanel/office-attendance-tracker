@@ -35,6 +35,8 @@
 
   <ItemGroup>
     <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+    <!-- Compile the UI-independent formatter so these tests can keep targeting net8.0. -->
+    <Compile Include="..\OfficeAttendanceTracker.Desktop\OfficeTimeFormatter.cs" Link="OfficeTimeFormatter.cs" />
   </ItemGroup>
 
 </Project>

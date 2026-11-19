@@ -115,14 +115,96 @@ namespace OfficeAttendanceTracker.Test
         #region TakeAttendance Tests
 
         [TestMethod]
+        public void DefaultDateTimeProvider_ReadsSuspendClock()
+        {
+            var clock = new DefaultDateTimeProvider();
+
+            var suspendedTime = clock.SuspendedTime;
+
+            Assert.IsTrue(suspendedTime >= -TimeSpan.FromMilliseconds(100));
+        }
+
+        [TestMethod]
+        [DataRow("none", true)]
+        [DataRow("away", false)]
+        [DataRow("sleep", false)]
+        [DataRow("long gap", false)]
+        [DataRow("midnight", false)]
+        [DataRow("restart", false)]
+        public void TakeAttendance_CreditsOnlyConsecutiveOfficePolls(string interruption, bool creditsInterval)
+        {
+            var config = BuildConfig(new Dictionary<string, string>
+            {
+                ["OfficeTimeTrackingMode"] = "FirstToLast",
+                ["PollIntervalMs"] = "300000"
+            });
+            var service = CreateService(config);
+            var start = new DateTimeOffset(2025, 1, 15, interruption == "midnight" ? 23 : 9,
+                58, 0, TimeSpan.FromHours(11));
+            var end = start.AddMinutes(interruption == "long gap" ? 6 : 5);
+            var addresses = new[] { IPAddress.Parse("192.168.1.10") };
+            _networkProviderMock.Setup(p => p.GetHostName()).Returns("testhost");
+            _networkProviderMock.Setup(p => p.GetHostAddresses("testhost")).Returns(() => addresses);
+            _networkProviderMock.Setup(p => p.GetAllNetworkInterfaces()).Returns([]);
+            _dateTimeProviderMock.Setup(d => d.Now).Returns(start);
+            service.TakeAttendance();
+
+            if (interruption == "away")
+            {
+                addresses = [];
+                service.TakeAttendance();
+                addresses = [IPAddress.Parse("192.168.1.10")];
+            }
+            if (interruption == "restart")
+                service = CreateService(config);
+            if (interruption == "sleep")
+                _dateTimeProviderMock.Setup(d => d.SuspendedTime).Returns(TimeSpan.FromSeconds(30));
+            _dateTimeProviderMock.Setup(d => d.Now).Returns(end);
+
+            service.TakeAttendance();
+
+            var expectedStart = creditsInterval ? (DateTimeOffset?)start : null;
+            _storeMock.Verify(s => s.RecordOfficeDetection(end, expectedStart), Times.Once);
+        }
+
+        [TestMethod]
+        [DataRow("Off", 2)]
+        [DataRow("FirstToLast", 2)]
+        [DataRow("Accumulated", 1)]
+        public void GetMonthlyReport_AppliesCurrentPolicyAndIncludesLegacyVisit(string mode, int expectedDays)
+        {
+            var trackedDate = new DateTime(2025, 1, 8);
+            var start = new DateTimeOffset(2025, 1, 8, 9, 0, 0, TimeSpan.FromHours(11));
+            _storeMock.Setup(s => s.GetMonth(It.IsAny<DateTime>())).Returns([
+                new AttendanceRecord { Date = trackedDate.AddDays(-1), IsOffice = true },
+                new AttendanceRecord
+                {
+                    Date = trackedDate,
+                    IsOffice = true,
+                    FirstOfficeDetectionAt = start,
+                    LastOfficeDetectionAt = start.AddHours(7.5),
+                    TrackedOfficeSeconds = 18000m
+                }
+            ]);
+            var service = CreateService(BuildConfig(new Dictionary<string, string>
+            {
+                ["OfficeTimeTrackingMode"] = mode,
+                ["MinimumOfficeHours"] = "7.5"
+            }));
+
+            var report = service.GetMonthlyReport(trackedDate);
+
+            Assert.AreEqual(expectedDays, report.OfficeDays);
+        }
+
+        [TestMethod]
         public void TakeAttendance_ReturnsTrue_WhenHostIpInNetwork()
         {
             _networkProviderMock.Setup(p => p.GetHostName()).Returns("testhost");
             _networkProviderMock.Setup(p => p.GetHostAddresses(It.IsAny<string>())).Returns(new[] { IPAddress.Parse("192.168.1.10") });
             _networkProviderMock.Setup(p => p.GetAllNetworkInterfaces()).Returns(new List<NetworkInterface>());
             
-            // Setup store mock to return null for GetToday (first time)
-            _storeMock.Setup(s => s.GetToday()).Returns((AttendanceRecord?)null);
+            // No attendance record exists for the poll date.
             _storeMock.Setup(s => s.Add(It.IsAny<bool>(), It.IsAny<DateTime>())).Returns(new AttendanceRecord { Date = DateTime.Today, IsOffice = false });
             _storeMock.Setup(s => s.SaveChanges());
 
@@ -137,13 +219,33 @@ namespace OfficeAttendanceTracker.Test
             _networkProviderMock.Setup(p => p.GetHostAddresses(It.IsAny<string>())).Returns(new[] { IPAddress.Parse("10.0.0.1") });
             _networkProviderMock.Setup(p => p.GetAllNetworkInterfaces()).Returns(new List<NetworkInterface>());
             
-            // Setup store mock to return null for GetToday (first time)
-            _storeMock.Setup(s => s.GetToday()).Returns((AttendanceRecord?)null);
+            // No attendance record exists for the poll date.
             _storeMock.Setup(s => s.Add(It.IsAny<bool>(), It.IsAny<DateTime>())).Returns(new AttendanceRecord { Date = DateTime.Today, IsOffice = false });
             _storeMock.Setup(s => s.SaveChanges());
 
             var service = CreateService();
             Assert.IsFalse(service.TakeAttendance());
+        }
+
+        [TestMethod]
+        public void TakeUntimedAttendance_UsesTheDateAfterDetection()
+        {
+            var today = new DateTime(2026, 11, 18);
+            var tomorrow = today.AddDays(1);
+            _dateTimeProviderMock.Setup(d => d.Today).Returns(() => today);
+            _networkProviderMock.Setup(p => p.GetHostAddresses(It.IsAny<string>()))
+                .Returns(() =>
+                {
+                    today = tomorrow;
+                    return [IPAddress.Parse("192.168.1.10")];
+                });
+            _networkProviderMock.Setup(p => p.GetAllNetworkInterfaces()).Returns([]);
+            _storeMock.Setup(s => s.Add(false, tomorrow)).Returns(new AttendanceRecord { Date = tomorrow, IsOffice = false });
+            var service = CreateService();
+
+            service.TakeAttendance();
+
+            _storeMock.Verify(s => s.Update(true, tomorrow), Times.Once);
         }
 
         #endregion

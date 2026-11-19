@@ -34,7 +34,9 @@ namespace OfficeAttendanceTracker.Desktop
                 "PollIntervalMs" => settings.PollIntervalMs.ToString(),
                 "EnableBackgroundWorker" => settings.EnableBackgroundWorker.ToString(),
                 "ComplianceThreshold" => settings.ComplianceThreshold.ToString(),
-                "DataFilePath" => settings.DataFilePath ?? string.Empty,
+                "OfficeTimeTrackingMode" => settings.OfficeTimeTrackingMode.ToString(),
+                "MinimumOfficeHours" => settings.MinimumOfficeHours.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                "DataFilePath" => SettingsManager.ResolveDataFolder(settings.DataFilePath),
                 "DataFileName" => settings.DataFileName,
                 _ when key.StartsWith("Networks:") => GetNetworkValue(key, settings),
                 _ => null
@@ -79,7 +81,8 @@ namespace OfficeAttendanceTracker.Desktop
 
             if (string.IsNullOrEmpty(parentPath))
             {
-                keys.AddRange(new[] { "Networks", "PollIntervalMs", "EnableBackgroundWorker", "ComplianceThreshold", "DataFilePath", "DataFileName" });
+                keys.AddRange(["Networks", "PollIntervalMs", "EnableBackgroundWorker", "ComplianceThreshold",
+                    "OfficeTimeTrackingMode", "MinimumOfficeHours", "DataFilePath", "DataFileName"]);
             }
             else if (parentPath == "Networks")
             {

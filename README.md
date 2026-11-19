@@ -79,7 +79,7 @@ Right-click the tray icon and choose **Reports...** to review monthly attendance
 
 ### Windows Service
 - Edit `appsettings.json` manually
-- Configure networks, poll interval, and compliance threshold
+- Configure networks, poll interval, compliance threshold, and office time tracking
 - Restart service after changes
 
 **Example Configuration:**
@@ -87,9 +87,25 @@ Right-click the tray icon and choose **Reports...** to review monthly attendance
 {
   "Networks": ["10.8.1.0/24", "192.168.1.0/24"],
   "PollIntervalMs": 1800000,
-  "ComplianceThreshold": 0.5
+  "ComplianceThreshold": 0.5,
+  "OfficeTimeTrackingMode": "Off",
+  "MinimumOfficeHours": 7.5
 }
 ```
+
+### Minimum office hours
+
+In Desktop Settings, choose an **Office time tracking** mode. The Windows Service
+accepts the equivalent values in `OfficeTimeTrackingMode`.
+
+- **Off** (`Off`) credits any office detection and is the default.
+- **First to last detection** (`FirstToLast`) measures the daily span, including gaps between visits.
+- **Accumulated office time** (`Accumulated`) credits intervals between consecutive office polls on the same date. Off-site polls, long gaps, Windows sleep and hibernation, and tracker restarts break the interval.
+
+Both tracking modes save the first detection, last detection, and accumulated time.
+The monthly report shows the duration for the selected mode and flags visits below
+the configured minimum. Reports and compliance apply the current rule to tracked
+days, while older office days without durations retain their credit.
 
 ## How It Works
 

@@ -7,6 +7,18 @@ namespace OfficeAttendanceTracker.Core
     /// </summary>
     public class AppSettings
     {
+        /// <summary>The default minimum duration for a tracked office day.</summary>
+        public const decimal DefaultMinimumOfficeHours = 7.5m;
+
+        /// <summary>Gets or sets how office time is measured.</summary>
+        [JsonPropertyName("officeTimeTrackingMode")]
+        [JsonConverter(typeof(JsonStringEnumConverter<OfficeTimeTrackingMode>))]
+        public OfficeTimeTrackingMode OfficeTimeTrackingMode { get; set; }
+
+        /// <summary>Gets or sets the hours required to qualify a tracked office day.</summary>
+        [JsonPropertyName("minimumOfficeHours")]
+        public decimal MinimumOfficeHours { get; set; } = DefaultMinimumOfficeHours;
+
         [JsonPropertyName("networks")]
         public List<string> Networks { get; set; } = [];
 
@@ -61,6 +73,8 @@ namespace OfficeAttendanceTracker.Core
                 PollIntervalMs = PollIntervalMs,
                 EnableBackgroundWorker = EnableBackgroundWorker,
                 ComplianceThreshold = ComplianceThreshold,
+                OfficeTimeTrackingMode = OfficeTimeTrackingMode,
+                MinimumOfficeHours = MinimumOfficeHours,
                 DataFilePath = DataFilePath,
                 DataFileName = DataFileName,
                 StartWithWindows = StartWithWindows

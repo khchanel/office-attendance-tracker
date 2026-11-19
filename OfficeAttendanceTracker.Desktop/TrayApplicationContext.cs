@@ -16,6 +16,7 @@ namespace OfficeAttendanceTracker.Desktop
         private readonly IAttendanceServiceProvider _serviceProvider;
         private readonly SettingsManager _settingsManager;
         private readonly System.Windows.Forms.Timer _updateTimer;
+        private readonly System.Windows.Forms.Timer _trayClickTimer;
         private int _lastCount = -1;
         private ComplianceStatus? _lastComplianceStatus;
         private SettingsForm? _settingsForm;
@@ -46,11 +47,24 @@ namespace OfficeAttendanceTracker.Desktop
             _trayIcon.ContextMenuStrip.Items.Add("Settings...", null, OnSettings);
             _trayIcon.ContextMenuStrip.Items.Add(new ToolStripSeparator());
             _trayIcon.ContextMenuStrip.Items.Add("Exit", null, OnExit);
-            _trayIcon.MouseClick += (s, e) =>
+            _trayClickTimer = new System.Windows.Forms.Timer { Interval = SystemInformation.DoubleClickTime };
+            _trayClickTimer.Tick += (sender, args) =>
             {
-                if (e.Button == MouseButtons.Left)
+                _trayClickTimer.Stop();
+                OnRefresh(sender, args);
+            };
+            _trayIcon.MouseClick += (_, args) =>
+            {
+                // Give Windows time to recognize a double-click before refreshing.
+                if (args.Button == MouseButtons.Left)
+                    _trayClickTimer.Start();
+            };
+            _trayIcon.MouseDoubleClick += (sender, args) =>
+            {
+                if (args.Button == MouseButtons.Left)
                 {
-                    OnRefresh(s, e);
+                    _trayClickTimer.Stop();
+                    OnReports(sender, args);
                 }
             };
             _trayIcon.ShowBalloonTip(2000, AppName, "Application started and running in the system tray.", ToolTipIcon.Info);
@@ -90,7 +104,7 @@ namespace OfficeAttendanceTracker.Desktop
 
         private void OnServiceRecreated(object? sender, IAttendanceService newService)
         {
-            UpdateAttendanceCount(showBalloonTip: true);
+            UpdateAttendanceCount(showBalloonTip: true, recordAttendance: false);
             _reportsForm?.RefreshReport();
         }
 
@@ -181,6 +195,10 @@ namespace OfficeAttendanceTracker.Desktop
                     isInOffice = service.CheckAttendance();
                 }
 
+                // Tray refreshes and scheduled polls update the open report after the check.
+                if (recordAttendance)
+                    _reportsForm?.RefreshReport();
+
                 var count = service.GetCurrentMonthAttendance();
                 var requiredDays = service.CalculateRequiredOfficeDays(service.GetBusinessDaysInCurrentMonth());
                 var targetPercentage = _settingsManager.CurrentSettings.ComplianceThreshold;
@@ -239,7 +257,9 @@ namespace OfficeAttendanceTracker.Desktop
             UpdateAttendanceCount(showBalloonTip: true);
         }
 
-        private void OnSettings(object? sender, EventArgs e)
+        private void OnSettings(object? sender, EventArgs e) => ShowSettings();
+
+        private void ShowSettings(Form? owner = null)
         {
             // If settings form is already open, bring it to front
             if (_settingsForm != null && !_settingsForm.IsDisposed)
@@ -251,12 +271,18 @@ namespace OfficeAttendanceTracker.Desktop
 
             // Create new settings form
             var networkDetectionService = _host.Services.GetRequiredService<INetworkDetectionService>();
-            _settingsForm = new SettingsForm(_settingsManager, networkDetectionService);
-            
-            // Clear reference when form is closed
-            _settingsForm.FormClosed += (s, args) => _settingsForm = null;
-            
-            _settingsForm.ShowDialog();
+            using var settingsForm = new SettingsForm(_settingsManager, networkDetectionService);
+            _settingsForm = settingsForm;
+            try
+            {
+                if (owner != null)
+                    settingsForm.StartPosition = FormStartPosition.CenterParent;
+                settingsForm.ShowDialog(owner);
+            }
+            finally
+            {
+                _settingsForm = null;
+            }
         }
 
         private void OnReports(object? sender, EventArgs e)
@@ -269,10 +295,12 @@ namespace OfficeAttendanceTracker.Desktop
                 return;
             }
 
-            _reportsForm = new ReportsForm(_serviceProvider, _host.Services.GetRequiredService<IDateTimeProvider>());
-            _reportsForm.RecordsChanged += (_, _) => UpdateAttendanceCount(recordAttendance: false);
-            _reportsForm.FormClosed += (_, _) => _reportsForm = null;
-            _reportsForm.Show();
+            var reportsForm = new ReportsForm(_serviceProvider, _host.Services.GetRequiredService<IDateTimeProvider>());
+            _reportsForm = reportsForm;
+            reportsForm.SettingsRequested += (_, _) => ShowSettings(reportsForm);
+            reportsForm.RecordsChanged += (_, _) => UpdateAttendanceCount(recordAttendance: false);
+            reportsForm.FormClosed += (_, _) => _reportsForm = null;
+            reportsForm.Show();
         }
 
         private void OnSettingsChanged(object? sender, AppSettings settings)
@@ -304,6 +332,8 @@ namespace OfficeAttendanceTracker.Desktop
         {
             _reportsForm?.Close();
             _trayIcon.Visible = false;
+            _trayClickTimer.Stop();
+            _trayClickTimer.Dispose();
             _updateTimer.Stop();
             _updateTimer.Dispose();
 

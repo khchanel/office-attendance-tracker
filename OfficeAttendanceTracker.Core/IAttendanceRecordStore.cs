@@ -28,6 +28,12 @@ namespace OfficeAttendanceTracker.Core
         void Update(bool isOffice, DateTime date);
 
         /// <summary>
+        /// Persists an office detection and credits the interval when the preceding detection still
+        /// matches the stored record.
+        /// </summary>
+        void RecordOfficeDetection(DateTimeOffset detectedAt, DateTimeOffset? previousDetection);
+
+        /// <summary>
         /// Sets and immediately persists a date's day-off flag, preserving office attendance.
         /// Marking an unrecorded date creates a record without office attendance.
         /// Removing a day off from an unrecorded date has no effect.
