@@ -1,0 +1,20 @@
+<Window x:Class="OfficeAttendanceTracker.Desktop.ResetSettingsDialog"
+        x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Reset to default" Width="420" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" UseLayoutRounding="True"
+        Background="#F6F8FB" Foreground="#1E2F48" FontFamily="Segoe UI" FontSize="13">
+    <Window.Resources>
+        <ResourceDictionary Source="DesktopStyles.xaml" />
+    </Window.Resources>
+    <StackPanel Margin="20" FocusManager.FocusedElement="{Binding ElementName=CancelButton}">
+        <TextBlock Text="Reset all settings to their defaults?" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <TextBlock Text="Click Save on the Settings tab to apply the defaults." Foreground="#485466"
+                   TextWrapping="Wrap" Margin="0,6,0,18" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" IsDefault="True" MinWidth="72" />
+            <Button x:Name="ResetButton" Content="_Reset" Click="ConfirmReset" Margin="8,0,0,0" MinWidth="72" />
+        </StackPanel>
+    </StackPanel>
+</Window>

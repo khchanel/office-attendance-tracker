@@ -3,7 +3,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using OfficeAttendanceTracker.Core;
-using MessageBox = System.Windows.MessageBox;
 using UserControl = System.Windows.Controls.UserControl;
 
 namespace OfficeAttendanceTracker.Desktop;
@@ -128,8 +127,8 @@ public partial class SettingsView : UserControl
 
     private void ResetSettings(object sender, RoutedEventArgs e)
     {
-        if (MessageBox.Show(Window.GetWindow(this), "Reset all settings to their defaults? Click Save to apply them.",
-                "Reset to default", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes)
+        var dialog = new ResetSettingsDialog { Owner = Window.GetWindow(this) };
+        if (dialog.ShowDialog() == true)
         {
             LoadSettings(AppSettings.CreateDesktopDefaults());
             SetFeedback("Defaults loaded. Click Save to apply them.");
