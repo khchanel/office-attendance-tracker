@@ -16,13 +16,19 @@ public partial class MainWindow : Window
             if (!ReferenceEquals(args.Source, Pages) || !ReportTab.IsSelected)
                 return;
 
-            if (args.RemovedItems.Contains(SettingsTab) && (settings.HasUnsavedChanges || HasOpenDialog))
+            if (args.RemovedItems.Contains(SettingsTab))
             {
-                SettingsTab.IsSelected = true;
-                if (ConfirmLeaveSettings(settings))
-                    ReportTab.IsSelected = true;
-                return;
+                if (settings.HasUnsavedChanges || HasOpenDialog)
+                {
+                    SettingsTab.IsSelected = true;
+                    if (ConfirmLeaveSettings(settings))
+                        ReportTab.IsSelected = true;
+                    return;
+                }
+
+                settings.ClearFeedback();
             }
+
 
             report.RefreshReport();
         };

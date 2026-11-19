@@ -41,8 +41,7 @@ public partial class SettingsView : UserControl
         MinimumHours.Text = Math.Clamp(settings.MinimumOfficeHours, 0.01m, 24m).ToString("0.##");
         DataFolder.Text = settings.DataFilePath ?? string.Empty;
         FileName.Text = settings.DataFileName;
-        SetNetworkFeedback();
-        SetFeedback("");
+        ClearFeedback();
     }
 
     private void TimeModeChanged(object sender, SelectionChangedEventArgs e)
@@ -127,6 +126,12 @@ public partial class SettingsView : UserControl
     }
 
     private void CancelSettings(object sender, RoutedEventArgs e) => CancelRequested?.Invoke(this, EventArgs.Empty);
+
+    internal void ClearFeedback()
+    {
+        SetNetworkFeedback();
+        SetFeedback("");
+    }
 
     internal void DiscardChanges()
     {
