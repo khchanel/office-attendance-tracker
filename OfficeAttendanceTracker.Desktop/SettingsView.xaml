@@ -13,19 +13,17 @@
             <TextBlock x:Name="Welcome" Text="Add your office networks to begin tracking attendance."
                        Margin="0,4,0,0" Foreground="#485466" TextWrapping="Wrap" Visibility="Collapsed" />
         </StackPanel>
-        <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <Button DockPanel.Dock="Left" Content="Reset to default" Click="ResetSettings" VerticalAlignment="Center" />
+            <Button DockPanel.Dock="Right" Content="_Save" Click="SaveSettings" MinWidth="72" VerticalAlignment="Center" />
+            <Button DockPanel.Dock="Right" Content="Cancel" Click="CancelSettings" MinWidth="72"
+                    Margin="0,0,8,0" VerticalAlignment="Center" />
             <TextBlock x:Name="Feedback" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
-                       Margin="0,0,0,8" Visibility="Collapsed" />
-            <DockPanel>
-                <Button DockPanel.Dock="Left" Content="Reset to default" Click="ResetSettings" />
-                <Button DockPanel.Dock="Right" Content="_Save" Click="SaveSettings" MinWidth="72" />
-                <Button DockPanel.Dock="Right" Content="Cancel" Click="CancelSettings" MinWidth="72" Margin="8,0" />
-                <Border />
-            </DockPanel>
-        </StackPanel>
+                       Margin="12,0" VerticalAlignment="Center" Visibility="Collapsed" />
+        </DockPanel>
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Grid.IsSharedSizeScope="True">
-                <GroupBox Header="Tracking" Padding="12" Margin="0,0,0,12">
+                <GroupBox Header="Tracking" Padding="12,8" Margin="0,0,0,10">
                     <StackPanel>
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
@@ -51,7 +49,7 @@
                         <CheckBox x:Name="StartWithWindows" Content="Start with Windows" />
                     </StackPanel>
                 </GroupBox>
-                <GroupBox Header="Attendance rules" Padding="12" Margin="0,0,0,12">
+                <GroupBox Header="Attendance rules" Padding="12,8" Margin="0,0,0,10">
                     <StackPanel>
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
@@ -74,7 +72,7 @@
                                 <ComboBoxItem Content="Accumulated office time" />
                             </ComboBox>
                         </Grid>
-                        <Grid Margin="0,0,0,8" x:Name="MinimumHoursField" Visibility="Collapsed">
+                        <Grid x:Name="MinimumHoursField" Visibility="Collapsed">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition SharedSizeGroup="Labels" />
                                 <ColumnDefinition Width="*" />
@@ -84,7 +82,7 @@
                         </Grid>
                     </StackPanel>
                 </GroupBox>
-                <GroupBox Header="Data file" Padding="12">
+                <GroupBox Header="Data file" Padding="12,8">
                     <StackPanel>
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
@@ -97,7 +95,7 @@
                                 <TextBox x:Name="DataFolder" ToolTip="Leave blank to use your user profile folder." />
                             </DockPanel>
                         </Grid>
-                        <Grid Margin="0,0,0,8">
+                        <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition SharedSizeGroup="Labels" />
                                 <ColumnDefinition Width="*" />
