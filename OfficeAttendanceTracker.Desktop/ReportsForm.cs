@@ -43,6 +43,9 @@ public sealed class ReportsForm : Form
     /// <summary>Occurs after an attendance or day-off change has been saved.</summary>
     public event EventHandler? RecordsChanged;
 
+    /// <summary>Occurs when the user requests the settings dialog.</summary>
+    internal event EventHandler? SettingsRequested;
+
     /// <summary>Creates a report using the active service and application clock.</summary>
     public ReportsForm(IAttendanceServiceProvider serviceProvider, IDateTimeProvider clock)
     {
@@ -84,7 +87,7 @@ public sealed class ReportsForm : Form
         _month.Value = new DateTime(clock.Today.Year, clock.Today.Month, 1);
         readActions.Controls.Add(_month);
         readActions.Controls.Add(MakeButton("Next", () => MoveMonth(1)));
-        readActions.Controls.Add(MakeButton("This month", () => _month.Value = new DateTime(_clock.Today.Year, _clock.Today.Month, 1)));
+        readActions.Controls.Add(MakeButton("This month", GoToToday));
         readActions.Controls.Add(MakeButton("Refresh", RefreshReport));
         editActions.Controls.Add(_dayOffButton);
         _dayOffButton.Click += (_, _) => ToggleDayOff();
@@ -134,13 +137,23 @@ public sealed class ReportsForm : Form
         _records.Columns.Add(new DataGridViewTextBoxColumn { Name = "Date", HeaderText = "Date", FillWeight = 55 });
         _records.Columns.Add(new DataGridViewTextBoxColumn { Name = "Day", HeaderText = "Day", FillWeight = 45 });
         _records.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = "Record", FillWeight = 95 });
+        _records.Columns.Add(new DataGridViewTextBoxColumn { Name = "OfficeTime", HeaderText = "Office time", FillWeight = 50, Visible = false });
         foreach (DataGridViewColumn column in _records.Columns)
             column.SortMode = DataGridViewColumnSortMode.NotSortable;
         recordsLayout.Controls.Add(_records, 0, 1);
         recordsGroup.Controls.Add(recordsLayout);
         body.Controls.Add(recordsGroup, 1, 0);
         layout.Controls.Add(body, 0, 5);
-        layout.Controls.Add(_detail, 0, 6);
+        var footer = new TableLayoutPanel
+        {
+            AutoSize = true, Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
+            Margin = Padding.Empty
+        };
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        footer.Controls.Add(MakeButton("Settings...", () => SettingsRequested?.Invoke(this, EventArgs.Empty)), 0, 0);
+        footer.Controls.Add(_detail, 1, 0);
+        layout.Controls.Add(footer, 0, 6);
         Controls.Add(layout);
 
         _month.ValueChanged += (_, _) => RefreshReport();
@@ -194,6 +207,14 @@ public sealed class ReportsForm : Form
         return card;
     }
 
+    private void GoToToday()
+    {
+        var today = _clock.Today.Date;
+        _month.Value = new DateTime(today.Year, today.Month, 1);
+        if (_report != null)
+            SelectDate(today);
+    }
+
     private void MoveMonth(int offset)
     {
         var next = _month.Value.AddMonths(offset);
@@ -227,6 +248,19 @@ public sealed class ReportsForm : Form
             _businessDays.Text = _report.BusinessDays.ToString();
             _attendanceRate.Text = rate;
             _configuredTarget.Text = $"Required: {_report.Threshold:P2}";
+            var showOfficeTime = _report.TimeTrackingMode != OfficeTimeTrackingMode.Off;
+            _records.Columns["OfficeTime"]!.Visible = showOfficeTime;
+            _toolTip.SetToolTip(_configuredTarget, showOfficeTime
+                ? $"A tracked office day requires {OfficeTimeFormatter.Format(_report.MinimumOfficeHours)}." : string.Empty);
+            const string belowMinimum = "Below minimum";
+            if (showOfficeTime && !_filter.Items.Contains(belowMinimum))
+                _filter.Items.Add(belowMinimum);
+            else if (!showOfficeTime && _filter.Items.Contains(belowMinimum))
+            {
+                if (_filter.Text == belowMinimum)
+                    _filter.SelectedIndex = 0;
+                _filter.Items.Remove(belowMinimum);
+            }
             var needed = Math.Max(0, _report.RequiredOfficeDays - _report.OfficeDays);
             var missedTarget = _report.IsComplete && !_report.IsTargetMet;
             var isCurrentMonth = _report.Month.Year == _clock.Today.Year && _report.Month.Month == _clock.Today.Month;
@@ -266,10 +300,24 @@ public sealed class ReportsForm : Form
 
     private string Status(DateTime date)
     {
-        var record = _report?.Records.FirstOrDefault(record => record.Date.Date == date);
-        if (record is not null)
-            return record.IsDayOff ? "Day off" : record.IsOffice ? "Office" : "Not in office";
+        var report = _report;
+        var record = report?.Records.FirstOrDefault(record => record.Date.Date == date);
+        if (record is not null && report is not null)
+        {
+            if (record.IsDayOff)
+                return "Day off";
+            if (report.CountsAsOfficeDay(record))
+                return "Office";
+            return record.IsOffice ? "Below minimum" : "Not in office";
+        }
         return date > _clock.Today ? "Upcoming" : date.IsWeekday() ? "No record" : "Weekend";
+    }
+
+    private string? FormatOfficeHours(DateTime date)
+    {
+        var record = _report?.Records.FirstOrDefault(record => record.Date.Date == date);
+        return record != null && _report?.GetOfficeHours(record) is { } hours
+            ? OfficeTimeFormatter.Format(hours) : null;
     }
 
     private void ToggleDayOff()
@@ -315,6 +363,7 @@ public sealed class ReportsForm : Form
     {
         "Office" => OfficeColor,
         "Not in office" => AwayColor,
+        "Below minimum" => Color.FromArgb(255, 236, 194),
         "Day off" => OffColor,
         "Weekend" or "Upcoming" => Color.FromArgb(237, 239, 243),
         _ => Color.White
@@ -347,6 +396,7 @@ public sealed class ReportsForm : Form
             var caption = status switch
             {
                 "Not in office" => "WFH",
+                "Below minimum" => "Short",
                 "Day off" => "Day Off",
                 "Upcoming" => "Future",
                 "Weekend" => string.Empty,
@@ -360,7 +410,8 @@ public sealed class ReportsForm : Form
                 BackColor = StatusColor(status), UseVisualStyleBackColor = false, Tag = date,
                 AccessibleName = $"{date:D}: {status}", Font = _calendarFont
             };
-            _toolTip.SetToolTip(button, $"{date:D}: {status}");
+            var hours = FormatOfficeHours(date);
+            _toolTip.SetToolTip(button, $"{date:D}: {status}{(hours is null ? "" : $" ({hours})")}");
             button.FlatAppearance.BorderColor = Color.FromArgb(210, 216, 225);
             button.Click += (_, _) => SelectDate(date);
             var cell = offset + day - 1;
@@ -380,28 +431,38 @@ public sealed class ReportsForm : Form
             var status = Status(date);
             if (_filter.SelectedIndex > 0 && status != _filter.Text)
                 continue;
-            var index = _records.Rows.Add(date.ToString("dd MMM yyyy"), date.ToString("ddd"), status);
+            var index = _records.Rows.Add(date.ToString("dd MMM yyyy"), date.ToString("ddd"), status, FormatOfficeHours(date));
             _records.Rows[index].Tag = date;
             _records.Rows[index].DefaultCellStyle.BackColor = StatusColor(status);
         }
-        if (selected.HasValue && _records.Rows.Cast<DataGridViewRow>().Any(row => Equals(row.Tag, selected.Value)))
-            SelectDate(selected.Value);
+        var rowToSelect = FindRecordRow(selected) ?? FindRecordRow(_clock.Today.Date);
+        if (rowToSelect != null)
+            SelectRecordRow(rowToSelect);
         ShowSelectedDay();
     }
 
+    private DataGridViewRow? FindRecordRow(DateTime? date) =>
+        date.HasValue ? _records.Rows.Cast<DataGridViewRow>().FirstOrDefault(row => Equals(row.Tag, date.Value)) : null;
+
     private void SelectDate(DateTime date)
     {
-        if (!_records.Rows.Cast<DataGridViewRow>().Any(row => Equals(row.Tag, date)))
-            _filter.SelectedIndex = 0;
-        foreach (DataGridViewRow row in _records.Rows)
+        var row = FindRecordRow(date);
+        if (row == null && _filter.SelectedIndex > 0)
         {
-            if (!Equals(row.Tag, date))
-                continue;
-            _records.CurrentCell = row.Cells[0];
-            _records.FirstDisplayedScrollingRowIndex = row.Index;
-            break;
+            _filter.SelectedIndex = 0;
+            row = FindRecordRow(date);
         }
-        ShowSelectedDay();
+
+        if (row != null)
+            SelectRecordRow(row);
+    }
+
+    private void SelectRecordRow(DataGridViewRow row)
+    {
+        _records.CurrentCell = row.Cells[0];
+        var visibleRows = Math.Max(1, _records.DisplayedRowCount(includePartialRow: false));
+        var lastPageStart = _records.Rows.Count - visibleRows;
+        _records.FirstDisplayedScrollingRowIndex = Math.Clamp(row.Index - visibleRows / 2, 0, lastPageStart);
     }
 
     private void ShowSelectedDay()

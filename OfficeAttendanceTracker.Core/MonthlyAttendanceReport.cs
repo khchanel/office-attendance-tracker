@@ -3,6 +3,20 @@ namespace OfficeAttendanceTracker.Core;
 /// <summary>A snapshot of attendance and target progress for one calendar month.</summary>
 public sealed class MonthlyAttendanceReport
 {
+    internal OfficeDayPolicy OfficeDayPolicy { get; init; }
+
+    /// <summary>Gets the office-time mode applied to this report.</summary>
+    public OfficeTimeTrackingMode TimeTrackingMode => OfficeDayPolicy.Mode;
+
+    /// <summary>Gets the minimum office hours applied to tracked days.</summary>
+    public decimal MinimumOfficeHours => OfficeDayPolicy.MinimumHours;
+
+    /// <summary>Gets the office hours for the selected mode, or null when unavailable.</summary>
+    public decimal? GetOfficeHours(AttendanceRecord record) => OfficeDayPolicy.GetOfficeHours(record);
+
+    /// <summary>Determines whether the record qualifies as an office day for this report.</summary>
+    public bool CountsAsOfficeDay(AttendanceRecord record) => OfficeDayPolicy.CountsAsOfficeDay(record);
+
     /// <summary>Gets the first day of the reported month.</summary>
     public required DateTime Month { get; init; }
 

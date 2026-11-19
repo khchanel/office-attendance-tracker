@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"flag"
@@ -29,7 +30,9 @@ func main() {
 	}
 
 	var records []Record
-	err = json.Unmarshal(jsonData, &records)
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	err = decoder.Decode(&records)
 	if err != nil {
 		fmt.Println("Error parsing JSON:", err)
 		return
@@ -39,8 +42,10 @@ func main() {
 	if len(records) > 0 {
 		// Get all available keys first
 		allKeys := make(map[string]bool)
-		for key := range records[0] {
-			allKeys[key] = true
+		for _, record := range records {
+			for key := range record {
+				allKeys[key] = true
+			}
 		}
 
 		// If column order is specified, use it
@@ -82,7 +87,11 @@ func main() {
 	for _, record := range records {
 		var row []string
 		for _, key := range keys {
-			row = append(row, fmt.Sprint(record[key]))
+			value := ""
+			if record[key] != nil {
+				value = fmt.Sprint(record[key])
+			}
+			row = append(row, value)
 		}
 		writer.Write(row)
 	}

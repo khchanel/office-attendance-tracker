@@ -36,6 +36,10 @@ namespace OfficeAttendanceTracker.Desktop
             }
         }
 
+        /// <summary>Resolves the Desktop attendance folder, using the user profile for a blank path.</summary>
+        internal static string ResolveDataFolder(string? path) =>
+            string.IsNullOrWhiteSpace(path) ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) : path;
+
         public bool IsFirstRun => _isFirstRun;
 
         public AppSettings CurrentSettings

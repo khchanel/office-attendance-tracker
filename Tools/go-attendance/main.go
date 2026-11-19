@@ -110,7 +110,7 @@ func loadFromCSV(path string) ([]AttendanceRecord, error) {
 
 	for i := startRow; i < len(rows); i++ {
 		row := rows[i]
-		if len(row) != 3 {
+		if len(row) < 3 {
 			continue // Skip malformed rows
 		}
 

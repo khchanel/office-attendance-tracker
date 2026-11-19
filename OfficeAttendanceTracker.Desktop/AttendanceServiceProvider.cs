@@ -73,19 +73,17 @@ namespace OfficeAttendanceTracker.Desktop
 
         private IAttendanceService CreateService(AppSettings settings)
         {
-            var store = CreateStore(settings);
+            var config = CreateConfiguration(settings);
+            var store = CreateStore(settings.DataFileName, config);
             store.Initialize();
             _currentStore = store;
 
-            var config = CreateConfiguration(settings);
-            
             return new AttendanceService(_logger, config, _networkInfoProvider, store, _dateTimeProvider);
         }
 
-        private IAttendanceRecordStore CreateStore(AppSettings settings)
+        private static IAttendanceRecordStore CreateStore(string fileName, IConfiguration config)
         {
-            var config = CreateConfiguration(settings);
-            var extension = Path.GetExtension(settings.DataFileName).ToLowerInvariant();
+            var extension = Path.GetExtension(fileName).ToLowerInvariant();
 
             return extension switch
             {
@@ -95,14 +93,16 @@ namespace OfficeAttendanceTracker.Desktop
             };
         }
 
-        private IConfiguration CreateConfiguration(AppSettings settings)
+        private static IConfiguration CreateConfiguration(AppSettings settings)
         {
             var configDict = new Dictionary<string, string?>
             {
                 ["Networks:0"] = settings.Networks.Count > 0 ? settings.Networks[0] : null,
                 ["PollIntervalMs"] = settings.PollIntervalMs.ToString(),
                 ["ComplianceThreshold"] = settings.ComplianceThreshold.ToString(),
-                ["DataFilePath"] = settings.DataFilePath,
+                ["OfficeTimeTrackingMode"] = settings.OfficeTimeTrackingMode.ToString(),
+                ["MinimumOfficeHours"] = settings.MinimumOfficeHours.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["DataFilePath"] = SettingsManager.ResolveDataFolder(settings.DataFilePath),
                 ["DataFileName"] = settings.DataFileName
             };
 
