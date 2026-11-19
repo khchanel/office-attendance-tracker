@@ -231,7 +231,7 @@ public sealed class ReportsForm : Form
             var showOfficeTime = _report.TimeTrackingMode != OfficeTimeTrackingMode.Off;
             _records.Columns["OfficeTime"]!.Visible = showOfficeTime;
             _toolTip.SetToolTip(_configuredTarget, showOfficeTime
-                ? $"A tracked office day requires {_report.MinimumOfficeHours:0.##}h." : string.Empty);
+                ? $"A tracked office day requires {OfficeTimeFormatter.Format(_report.MinimumOfficeHours)}." : string.Empty);
             const string belowMinimum = "Below minimum";
             if (showOfficeTime && !_filter.Items.Contains(belowMinimum))
                 _filter.Items.Add(belowMinimum);
@@ -297,7 +297,7 @@ public sealed class ReportsForm : Form
     {
         var record = _report?.Records.FirstOrDefault(record => record.Date.Date == date);
         return record != null && _report?.GetOfficeHours(record) is { } hours
-            ? $"{hours:0.##}h" : null;
+            ? OfficeTimeFormatter.Format(hours) : null;
     }
 
     private void ToggleDayOff()
