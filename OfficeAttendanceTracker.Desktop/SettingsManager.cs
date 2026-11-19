@@ -97,10 +97,13 @@ namespace OfficeAttendanceTracker.Desktop
 
         internal void ApplySettings(AppSettings settings)
         {
-            var wasRegistered = IsStartupEnabled();
-            var updateRegistration = settings.StartWithWindows != wasRegistered;
+            using var key = Registry.CurrentUser.OpenSubKey(runRegistryKey);
+            var previousCommand = key?.GetValue(applicationName, null, RegistryValueOptions.DoNotExpandEnvironmentNames);
+            var previousKind = previousCommand is null ? RegistryValueKind.String : key!.GetValueKind(applicationName);
+            var command = settings.StartWithWindows ? GetStartupCommand() : null;
+            var updateRegistration = !Equals(previousCommand, command) || previousKind != RegistryValueKind.String;
             if (updateRegistration)
-                SetStartupEnabled(settings.StartWithWindows);
+                WriteStartupCommand(command, RegistryValueKind.String);
 
             try
             {
@@ -109,7 +112,7 @@ namespace OfficeAttendanceTracker.Desktop
             catch
             {
                 if (updateRegistration)
-                    SetStartupEnabled(wasRegistered);
+                    WriteStartupCommand(previousCommand, previousKind);
                 throw;
             }
         }
@@ -143,26 +146,28 @@ namespace OfficeAttendanceTracker.Desktop
         /// <summary>
         /// Enables or disables startup with Windows
         /// </summary>
-        public void SetStartupEnabled(bool enabled)
+        public void SetStartupEnabled(bool enabled) =>
+            WriteStartupCommand(enabled ? GetStartupCommand() : null, RegistryValueKind.String);
+
+        private static string GetStartupCommand()
+        {
+            var executablePath = Environment.ProcessPath ?? throw new InvalidOperationException("Executable path is unavailable.");
+            return $"\"{executablePath}\"";
+        }
+
+        private static void WriteStartupCommand(object? command, RegistryValueKind kind)
         {
             try
             {
-                using var key = Registry.CurrentUser.OpenSubKey(runRegistryKey, true);
-                
-                if (key == null)
-                    return;
-
-                if (enabled)
+                if (command is null)
                 {
-                    var executablePath = Environment.ProcessPath ?? throw new InvalidOperationException("Executable path is unavailable.");
-                    key.SetValue(applicationName, $"\"{executablePath}\"");
+                    using var key = Registry.CurrentUser.OpenSubKey(runRegistryKey, writable: true);
+                    key?.DeleteValue(applicationName, throwOnMissingValue: false);
                 }
                 else
                 {
-                    if (key.GetValue(applicationName) != null)
-                    {
-                        key.DeleteValue(applicationName);
-                    }
+                    using var key = Registry.CurrentUser.CreateSubKey(runRegistryKey);
+                    key.SetValue(applicationName, command, kind);
                 }
             }
             catch (Exception ex)
