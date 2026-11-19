@@ -46,7 +46,7 @@ namespace OfficeAttendanceTracker.Desktop
             _trayIcon.ContextMenuStrip.Items.Add("Reports...", null, (_, _) => ShowWindow(settings: false));
             _trayIcon.ContextMenuStrip.Items.Add("Settings...", null, (_, _) => ShowWindow(settings: true));
             _trayIcon.ContextMenuStrip.Items.Add(new ToolStripSeparator());
-            _trayIcon.ContextMenuStrip.Items.Add("Exit", null, (_, _) => System.Windows.Application.Current.Shutdown());
+            _trayIcon.ContextMenuStrip.Items.Add("Exit", null, (_, _) => Exit());
             _trayClickTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(SystemInformation.DoubleClickTime) };
             _trayClickTimer.Tick += (sender, args) =>
             {
@@ -310,6 +310,16 @@ namespace OfficeAttendanceTracker.Desktop
             {
                 _updateTimer.Stop();
             }
+        }
+
+        private void Exit()
+        {
+            if (_mainWindow?.HasOpenDialog == true)
+                return;
+
+            _mainWindow?.Close();
+            if (_mainWindow is null)
+                System.Windows.Application.Current.Shutdown();
         }
 
         public void Dispose()

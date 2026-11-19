@@ -12,8 +12,10 @@ public partial class SettingsView : UserControl
 {
     private readonly SettingsManager _settingsManager;
     private readonly INetworkDetectionService _networkDetectionService;
+    private Draft _savedDraft;
 
-    internal event EventHandler? Cancelled;
+    internal event EventHandler? CancelRequested;
+    internal bool HasUnsavedChanges => ReadDraft() != _savedDraft;
 
     internal SettingsView(SettingsManager settingsManager, INetworkDetectionService networkDetectionService)
     {
@@ -24,6 +26,7 @@ public partial class SettingsView : UserControl
         Welcome.Visibility = settingsManager.IsFirstRun && settings.Networks.Count == 0
             ? Visibility.Visible : Visibility.Collapsed;
         LoadSettings(settings);
+        _savedDraft = ReadDraft();
     }
 
     private void LoadSettings(AppSettings settings)
@@ -115,19 +118,26 @@ public partial class SettingsView : UserControl
             return;
         }
 
+        _savedDraft = ReadDraft();
         Welcome.Visibility = Visibility.Collapsed;
         SetFeedback("Settings saved and applied.");
     }
 
-    private void CancelSettings(object sender, RoutedEventArgs e)
+    private void CancelSettings(object sender, RoutedEventArgs e) => CancelRequested?.Invoke(this, EventArgs.Empty);
+
+    internal void DiscardChanges()
     {
         LoadSettings(_settingsManager.CurrentSettings);
-        Cancelled?.Invoke(this, EventArgs.Empty);
+        _savedDraft = ReadDraft();
     }
 
     private void ResetSettings(object sender, RoutedEventArgs e)
     {
-        var dialog = new ResetSettingsDialog { Owner = Window.GetWindow(this) };
+        var dialog = new SettingsConfirmationDialog("Reset to default", "Reset all settings to their defaults?", "_Reset",
+            details: "Click Save on the Settings tab to apply the defaults.")
+        {
+            Owner = Window.GetWindow(this)
+        };
         if (dialog.ShowDialog() == true)
         {
             LoadSettings(AppSettings.CreateDesktopDefaults());
@@ -212,4 +222,10 @@ public partial class SettingsView : UserControl
         Feedback.Foreground = error ? System.Windows.Media.Brushes.Firebrick : System.Windows.Media.Brushes.DarkSlateGray;
         Feedback.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
+
+    private Draft ReadDraft() => new(Networks.Text, PollInterval.Text, AutomaticTracking.IsChecked, StartWithWindows.IsChecked,
+        Threshold.Text, TimeMode.SelectedIndex, MinimumHours.Text, DataFolder.Text, FileName.Text);
+
+    private readonly record struct Draft(string Networks, string PollInterval, bool? AutomaticTracking, bool? StartWithWindows,
+        string Threshold, int TimeMode, string MinimumHours, string DataFolder, string FileName);
 }

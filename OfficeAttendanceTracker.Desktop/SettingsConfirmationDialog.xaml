@@ -1,0 +1,20 @@
+<Window x:Class="OfficeAttendanceTracker.Desktop.SettingsConfirmationDialog"
+        x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="420" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" UseLayoutRounding="True"
+        Background="#F6F8FB" Foreground="#1E2F48" FontFamily="Segoe UI" FontSize="13">
+    <Window.Resources>
+        <ResourceDictionary Source="DesktopStyles.xaml" />
+    </Window.Resources>
+    <StackPanel Margin="20" FocusManager.FocusedElement="{Binding ElementName=CancelButton}">
+        <TextBlock x:Name="Question" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <TextBlock x:Name="Details" Foreground="#485466"
+                   TextWrapping="Wrap" Margin="0,6,0,0" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button x:Name="CancelButton" IsCancel="True" IsDefault="True" MinWidth="72" />
+            <Button x:Name="ConfirmButton" Click="Confirm" Margin="8,0,0,0" MinWidth="72" />
+        </StackPanel>
+    </StackPanel>
+</Window>
